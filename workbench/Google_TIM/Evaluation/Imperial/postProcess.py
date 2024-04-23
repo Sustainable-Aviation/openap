@@ -146,3 +146,32 @@ def plot_distance_bin(df_sum):
         plt.show()
 
 
+def plot_map_singleFlight(long, lat, altitude):
+
+
+    # Normalize the altitude values to a range between 0 and 1 for coloring
+    norm = plt.Normalize(altitude.min(), altitude.max())
+    cmap = plt.cm.viridis  # Color map
+
+    fig, ax = plt.subplots(figsize=(20, 10), subplot_kw={'projection': ccrs.Robinson()})
+    ax.set_global()  # Ensure the entire globe is displayed
+    ax.add_feature(cfeature.COASTLINE)
+    ax.add_feature(cfeature.BORDERS, linestyle=':')
+    #ax.add_feature(cfeature.OCEAN, alpha=0.1)
+    #ax.add_feature(cfeature.LAKES, alpha=0.5)
+    #ax.add_feature(cfeature.RIVERS)
+
+    # Scatter plot for latitude and longitude data, color-coded by altitude
+    sc = ax.scatter(long, lat, c=altitude, cmap=cmap, norm=norm, transform=ccrs.Geodetic(), marker='o', s =6)
+
+    cbar = plt.colorbar(sc, ax=ax, orientation='vertical', fraction=0.02, pad=0.02)
+    cbar.set_label('Altitude (feet)', fontsize=20, fontname = "Times New Roman")
+
+    cbar.ax.tick_params(labelsize=18)  # Set font size of the colorbar tick labels
+
+
+    for label in cbar.ax.get_yticklabels():
+        label.set_family("Times New Roman")
+
+    plt.show()    
+
