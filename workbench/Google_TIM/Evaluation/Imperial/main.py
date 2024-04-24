@@ -139,15 +139,19 @@ for index, row in df_sum.iterrows():
             # Optionally, convert the angle to degrees for easier interpretation
             matching_rows['path_angle_degrees'] = np.degrees(matching_rows['path_angle_radians'])
 
-            print("Computing fuel burn..")
-            airframe = "a321"
-            utl.compute_emissions(matching_rows, airframe, 0.85)
-            print("Done!")
+            airFrame = utl.fallback(airframe)
 
+            fuel_burn = utl.compute_emissions(matching_rows, airFrame, 0.85)
+
+            # Add the computed fuel burn to the DataFrame
+            matching_rows['fuel_burn'] = fuel_burn
 
             matching_rows.to_csv("selected_waypoint.csv")
             print("Data saved to 'selected_waypoint.csv'.")
             print(matching_rows.head(5))
+
+            pProc.plot_map_fuelburn(matching_rows)
+            
 
             #print(time)
     

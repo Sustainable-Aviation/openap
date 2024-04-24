@@ -9,6 +9,7 @@ def compute_emissions(trajectory, actype, massfrac):
     # Define fuel flow object with default engine (TODO add specifici with Cirium)
     ff = FuelFlow(actype)
 
+
     ac1 = prop.aircraft(actype)
 
     # Get mass design limits
@@ -23,26 +24,48 @@ def compute_emissions(trajectory, actype, massfrac):
     # Get the MFC for this airframe
     MFC = ac1['limits']['MFC']  # Kgs
 
-    mass0 = massfrac * MTOW
-
     path_angles = trajectory.path_angle_radians
     
+    # Time spent over each segment (in-between waypoints)
     time_deltas = trajectory.elapsed_time_seconds
 
-    mass = mass0
+    # Set the initial mass to "some fraction" of MTOW
+    mass_init = massfrac * MTOW
+    mass = mass_init
 
-    for (dt, tas, alt, pa) in zip(time_deltas, trajectory.true_airspeed_knots, trajectory.altitude_ft, path_angles):
+    # Determine the number of segments
+    n = len(time_deltas)
+
+    # Initialize a NumPy array of zeros with size n to store fuelflow*dt values
+    fuel_consumption_array = np.zeros(n)
+
+    for i, (dt, tas, alt, pa) in enumerate(zip(time_deltas, trajectory.true_airspeed_knots, trajectory.altitude_ft, path_angles)):
+        if None in (dt, tas, alt, pa):
+            print(f"Skipping index {i} due to missing data.")
+            continue
         fuelflow = ff.enroute(mass, tas, alt, pa)
+        # Here fuelflow is change in mass (fuel burn) over a segment
         mass -= fuelflow * dt
-    
+
+        # Store the product of fuelflow and dt directly in the preallocated array
+        fuel_consumption_array[i] = fuelflow * dt
 
     # Ensure that the final mass is less than or equal to design MLW
     if (mass > MLW):
         print("ERROR: Current mass fraction and mission profile reuslts in exceeding MLW")
         sys.exit()
 
-    fuel = mass0 - mass
+    fuelburn = mass_init - mass
 
-    print("Fuel burn: ", fuel)
+    print("Fuel burn: ", fuelburn)
+
+    return fuel_consumption_array
 
 
+def fallback(airframe):
+    if airframe == "E195":
+        print("E195 not supported, selecting A319 as fallback airframe \n")
+        alt_airframe = "A319"
+        return alt_airframe
+    else:
+        return airframe

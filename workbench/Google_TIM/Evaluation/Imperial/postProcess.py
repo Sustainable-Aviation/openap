@@ -175,3 +175,44 @@ def plot_map_singleFlight(long, lat, altitude):
 
     plt.show()    
 
+def plot_map_fuelburn(matching_rows):
+
+    fig = plt.figure(figsize=(20, 10))
+    ax = fig.add_subplot(1, 1, 1, projection=ccrs.Robinson())
+
+    ax.add_feature(cfeature.COASTLINE)
+    ax.add_feature(cfeature.BORDERS, linestyle=':')
+    #ax.add_feature(cfeature.OCEAN, alpha=0.1)
+    #ax.add_feature(cfeature.LAKES, alpha=0.5)
+    #ax.add_feature(cfeature.RIVERS)
+    ax.set_global()
+
+    # Remove bounding box/spines
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+
+    latitude = matching_rows['latitude']
+    longitude = matching_rows['longitude']
+    fuel_burn = matching_rows['fuel_burn']
+
+    # Normalize the altitude values to a range between 0 and 1 for coloring
+    norm = plt.Normalize(fuel_burn.min(), fuel_burn.max())
+    cmap = plt.cm.viridis  # Color map
+
+    # Scatter plot for latitude and longitude data, color-coded by altitude
+    sc = ax.scatter(longitude, latitude, c=fuel_burn, cmap=cmap, norm=norm, transform=ccrs.Geodetic(), marker='o', s =1)
+
+    cbar = plt.colorbar(sc, ax=ax, orientation='vertical', fraction=0.02, pad=0.02)
+    cbar.set_label('Fuel burn (Kg)', fontsize=20, fontname = "Times New Roman")
+
+    # Customize colorbar tick labels
+    cbar.ax.tick_params(labelsize=18)  # Set font size of the colorbar tick labels
+
+    for label in cbar.ax.get_yticklabels():
+        label.set_family("Times New Roman")
+
+    plt.rcParams['figure.dpi'] = 300
+    plt.rcParams['savefig.dpi'] = 300
+    plt.savefig('Output/Plots/Map_Fuel_bun.png')
+
+    plt.show()
