@@ -15,29 +15,6 @@ def read_parquet_header(file_path):
 
     return df
 
-def calculate_elapsed_time(timestamps):
-    # Ensure all timestamps are in datetime format
-    datetime_objects = []
-    for ts in timestamps:
-        if isinstance(ts, str):
-            dt = datetime.strptime(ts, "%Y-%m-%d %H:%M:%S")
-        elif isinstance(ts, pd.Timestamp):  # handle pandas Timestamp
-            dt = ts.to_pydatetime()
-        else:
-            raise ValueError("Unsupported timestamp format")
-
-        datetime_objects.append(dt)
-
-    # Calculate the differences between consecutive timestamps
-    time_differences = [datetime_objects[i + 1] - datetime_objects[i] for i in range(len(datetime_objects) - 1)]
-
-    # Convert time differences to seconds
-    elapsed_seconds = [td.total_seconds() for td in time_differences]
-
-    return elapsed_seconds
-
-
-
 
 # Replace 'yourfile.parquet' with the path to your Parquet file
 #file_path = 'Data/ICCT_GAIA_Flight_Waypoints_Sample.pq'
@@ -49,62 +26,67 @@ df_sum = read_parquet_header(file_path_1)  # Datadrame with flight summary
 df_wyp = read_parquet_header(file_path_2)  # Dataframe with flight speed, waypoints
 
 #Target_id = "190107-10182-AZU2585"
-Target_id = "190114-20090-AAL1294"
+#Target_id = "190114-20090-AAL1294"
+Target_id = "190107-72701-IBE32HL"
 
-for index, row in df_sum.iterrows():
+debug = False
+Limit = 3000
 
-    # Get current Flight id 
-    flight_id = row["flight_id"]
+# List to hold data for all flights for plotting
+all_flights_data = []
 
-    if flight_id == Target_id:
+count  = 0
 
-        print("Origin airport: ", row['origin_airport'])
-        print("Destination airport: ", row['destination_airport'])
-        #print(" Aircraft type: ", row['aircraft_type_icao'])
-        # Check if this matches with target flight ID
-        matching_rows = df_wyp[df_wyp['flight_id'] == Target_id]
-        airframe = row['aircraft_type_icao']
+# Loop through each unique flight_id in df_sum
+for flight_id in df_sum['flight_id'].unique():
+    if debug:
+        if flight_id == Target_id:
+            flight_data = df_sum[df_sum['flight_id'] == flight_id]
         
+    else:
+        flight_data = df_sum[df_sum['flight_id'] == flight_id]
+
+        if count > Limit:
+            break
+
+        airframe = flight_data['aircraft_type_icao'].iloc[0]
+
+        # Select matching waypoints data
+        matching_rows = df_wyp[df_wyp['flight_id'] == flight_id]
+
         if not matching_rows.empty:
-
-            # Compute the elapsed time in seconds for each segment
-            #elapsed_time = calculate_elapsed_time(matching_rows['time'])
-
-            #print(elapsed_time)
+            matching_rows = matching_rows.copy()
             processed_df = utl.processFlightdata(matching_rows)
 
             # See if a fallback airframe is required (if not supported in openAP )
+            print("Current airframe: ", airframe)
             airFrame = utl.fallback(airframe)
 
-            fuel_burn = utl.compute_emissions(processed_df, airFrame, 0.75)
+            if debug:
+                print(flight_data['flight_id'])
+                processed_df.to_csv("Failing.csv")
+                fuel_burn = utl.compute_emissions(processed_df, airFrame, 0.75, debug)
 
-            # Add the computed fuel burn to the DataFrame
-            processed_df['fuel_burn'] = fuel_burn
+            else:
 
-            processed_df.to_csv("selected_waypoint.csv")
-            print("Data saved to 'selected_waypoint.csv'.")
-            print(processed_df.head(5))
-
-            pProc.plot_map_fuelburn(processed_df)
-            
-
-            #print(time)
-    
-            #fig, ax = plt.subplots(figsize=(10, 5))
-            #ax.plot(matching_rows['cumulative_distance_nmi'], matching_rows['altitude_ft'], marker='o', linestyle='-', color='blue')
-            #plt.show()
+                fuel_burn = utl.compute_emissions(processed_df, airFrame, 0.75, debug)       
 
 
+                # Add the computed fuel burn to the DataFrame
+                processed_df['fuel_burn'] = fuel_burn
 
-            #pProc.plot_map_singleFlight(longitude, latitude, altitude)
+                all_flights_data.append(processed_df)
 
+                #print(matching_rows.head(5))
 
+        count  = count + 1
 
+ # end df_sum loop   
 
+# Combine all data into a single DataFrame
+combined_data = pd.concat(all_flights_data, ignore_index=True)
 
-
-
-
+pProc.plot_map_fuelburn(combined_data)
 
 #################
 # Plot the altitude profile on world map

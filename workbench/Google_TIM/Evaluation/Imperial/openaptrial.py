@@ -2,11 +2,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 from openap import prop, FuelFlow
 
-ac1 = prop.aircraft('A321')
+#actype = "a20n"
+
+ac1 = prop.aircraft("a20n")
+
+ff = FuelFlow("a20n")
 
 # Get the MTOW for this airframe
 MTOW = ac1['limits']['MTOW']  # Kgs
 
+ac1 = prop.aircraft("a20n")
 
 # Get the MLW for this airframe
 MLW = ac1['limits']['MLW']  # Kgs

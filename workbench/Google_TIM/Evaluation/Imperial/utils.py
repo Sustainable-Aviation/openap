@@ -4,11 +4,10 @@ import numpy as np
 import sys
 from datetime import datetime
 
-def compute_emissions(trajectory, actype, massfrac):
+def compute_emissions(trajectory, actype, massfrac, debug):
 
     # Define fuel flow object with default engine (TODO add specifici with Cirium)
     ff = FuelFlow(actype)
-
 
     ac1 = prop.aircraft(actype)
 
@@ -47,6 +46,19 @@ def compute_emissions(trajectory, actype, massfrac):
         # Here fuelflow is change in mass (fuel burn) over a segment
         mass -= fuelflow * dt
 
+        if debug:
+            if pd.isna(fuelflow * dt):
+                print("Fuel burn calculation resulted in NAN, stopping execution")
+
+                print("Aircraft: ", actype)
+                print("Current dt:", dt)
+                print("Current fuelflow:", fuelflow)
+                print("Current mass:", mass)
+                print("Current TAS:", tas)
+                print("Current PA:", pa)
+                print("Current alt:", alt)
+                raise ValueError("Fuel burn is NaN")
+
         # Store the product of fuelflow and dt directly in the preallocated array
         fuel_consumption_array[i] = fuelflow * dt
 
@@ -66,7 +78,17 @@ def fallback(airframe):
     if airframe == "E195":
         print("E195 not supported, selecting A319 as fallback airframe \n")
         alt_airframe = "A319"
+
+    if airframe == "A20N":
+        print("A20N not supported, selecting A320 as fallback airframe \n")
+        alt_airframe = "A320"
         return alt_airframe
+
+    if airframe == "B734":
+        print("B734 not supported, selecting B737 as fallback airframe \n")
+        alt_airframe = "B737"
+        return alt_airframe    
+    
     else:
         return airframe
 
@@ -100,8 +122,6 @@ def processFlightdata(matching_rows):
     altitude = matching_rows['altitude_ft']
     seg_len_nmi = matching_rows['segment_length'] * 0.001 * 0.539957
 
-    print(matching_rows['time'])
-
     # Compute the elapsed time in seconds for each segment
     elapsed_time = calculate_elapsed_time(matching_rows['time'])
 
@@ -133,10 +153,10 @@ def processFlightdata(matching_rows):
     matching_rows['rate_of_climb_fpm'] = (matching_rows['delta_altitude'] / matching_rows['elapsed_time_seconds'].replace(0, pd.NA)) * 60
 
     # Set the first entry of rate of climb to the same as for the second entry
-    matching_rows['rate_of_climb_fpm'].iloc[0] = matching_rows['rate_of_climb_fpm'].iloc[1]
+    matching_rows.loc[matching_rows.index[0], 'rate_of_climb_fpm'] = matching_rows['rate_of_climb_fpm'].iloc[1]
 
     # The time elaspsed for the first row is zero. Take it as half of the time elapsed of the next waypoint
-    matching_rows['elapsed_time_seconds'].iloc[0] = (matching_rows['elapsed_time_seconds'].iloc[1]) * 0.2
+    matching_rows.loc[matching_rows.index[0], 'elapsed_time_seconds'] = matching_rows['elapsed_time_seconds'].iloc[1] * 0.5
 
     # If the last value of true airspeed is zero, drop the last row from the datafrae
     if matching_rows['true_airspeed'].iloc[-1] == 0:
