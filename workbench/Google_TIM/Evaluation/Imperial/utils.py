@@ -2,7 +2,7 @@ import pandas as pd
 from openap import prop, FuelFlow
 import numpy as np
 import sys
-
+from datetime import datetime
 
 def compute_emissions(trajectory, actype, massfrac):
 
@@ -69,3 +69,104 @@ def fallback(airframe):
         return alt_airframe
     else:
         return airframe
+
+
+def calculate_elapsed_time(timestamps):
+    # Ensure all timestamps are in datetime format
+    datetime_objects = []
+    for ts in timestamps:
+        if isinstance(ts, str):
+            dt = datetime.strptime(ts, "%Y-%m-%d %H:%M:%S")
+        elif isinstance(ts, pd.Timestamp):  # handle pandas Timestamp
+            dt = ts.to_pydatetime()
+        else:
+            raise ValueError("Unsupported timestamp format")
+
+        datetime_objects.append(dt)
+
+    # Calculate the differences between consecutive timestamps
+    time_differences = [datetime_objects[i + 1] - datetime_objects[i] for i in range(len(datetime_objects) - 1)]
+
+    # Convert time differences to seconds
+    elapsed_seconds = [td.total_seconds() for td in time_differences]
+
+    return elapsed_seconds
+
+def processFlightdata(matching_rows):
+    # Make a definite copy if it's originally a slice
+    matching_rows = matching_rows.copy()
+    latitude = matching_rows['latitude']
+    longitude = matching_rows['longitude']
+    altitude = matching_rows['altitude_ft']
+    seg_len_nmi = matching_rows['segment_length'] * 0.001 * 0.539957
+
+    print(matching_rows['time'])
+
+    # Compute the elapsed time in seconds for each segment
+    elapsed_time = calculate_elapsed_time(matching_rows['time'])
+
+    #print(elapsed_time)
+
+    # Insert zero at the start of the elapsed_time list
+    elapsed_time.insert(0, 0)
+
+    # Assign elapsed_time list to a new DataFrame column
+    matching_rows['elapsed_time_seconds'] = elapsed_time
+
+    # Calculate cumulative distance in nautical miles
+    # Avoid SettingWithCopyWarning by ensuring operations are done on a DataFrame, not a slice
+    matching_rows.loc[:, 'segment_length_nmi'] = matching_rows['segment_length'] * 0.000539957
+    matching_rows.loc[:, 'cumulative_distance_nmi'] = matching_rows['segment_length_nmi'].cumsum()
+
+    total_segment_length = matching_rows['segment_length'].sum()
+    #print("Total segment length in nmi: ", total_segment_length * 0.001 * 0.539957)
+
+    # Compute the rate of climb
+    # Calculate the change in altitude (delta altitude)
+    matching_rows['delta_altitude'] = matching_rows['altitude_ft'].diff()
+
+    # Clean up the DataFrame by filling or removing NA values if necessary
+    matching_rows.fillna(0, inplace=True)  # Optional: replace NA values with 0 if suitable for your context
+
+    # Calculate the rate of climb in feet per minute (ft/min)
+    # Prevent division by zero by replacing 0 with NaN in 'delta_time_seconds'
+    matching_rows['rate_of_climb_fpm'] = (matching_rows['delta_altitude'] / matching_rows['elapsed_time_seconds'].replace(0, pd.NA)) * 60
+
+    # Set the first entry of rate of climb to the same as for the second entry
+    matching_rows['rate_of_climb_fpm'].iloc[0] = matching_rows['rate_of_climb_fpm'].iloc[1]
+
+    # The time elaspsed for the first row is zero. Take it as half of the time elapsed of the next waypoint
+    matching_rows['elapsed_time_seconds'].iloc[0] = (matching_rows['elapsed_time_seconds'].iloc[1]) * 0.2
+
+    # If the last value of true airspeed is zero, drop the last row from the datafrae
+    if matching_rows['true_airspeed'].iloc[-1] == 0:
+        # Get the index of the last row
+        last_row_index = matching_rows.index[-1]
+
+        # Drop the last row by index
+        matching_rows = matching_rows.drop(last_row_index)
+
+    
+    # Convert true airspeed from meters per second to knots
+    matching_rows['true_airspeed_knots'] = matching_rows['true_airspeed'] * 1.94384
+
+    # Ensure 'rate_of_climb_fpm' and 'true_airspeed_knots' columns are numeric
+    matching_rows['rate_of_climb_fpm'] = pd.to_numeric(matching_rows['rate_of_climb_fpm'], errors='coerce')
+    matching_rows['true_airspeed_knots'] = pd.to_numeric(matching_rows['true_airspeed_knots'], errors='coerce')   
+
+    # Create a new column with the converted values
+    matching_rows['true_airspeed_fpm'] = matching_rows['true_airspeed_knots'] * 101.3
+
+    # Compute the path angle in radians
+    matching_rows['path_angle_radians'] = np.arctan(matching_rows['rate_of_climb_fpm'] / matching_rows['true_airspeed_fpm'])
+
+    # Optionally, convert the angle to degrees for easier interpretation
+    matching_rows['path_angle_degrees'] = np.degrees(matching_rows['path_angle_radians'])
+
+    # Processing complete, return the dataframe
+    return matching_rows
+
+
+
+
+
