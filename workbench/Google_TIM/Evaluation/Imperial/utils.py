@@ -4,33 +4,67 @@ import numpy as np
 import sys
 from datetime import datetime
 
-def compute_emissions(trajectory, actype, massfrac, debug):
+def computute_mission_weight(actype, payload_factor, fuel_factor, diagnostics):
 
-    # Define fuel flow object with default engine (TODO add specifici with Cirium)
-    ff = FuelFlow(actype)
-
+    # Get aircraft type
     ac1 = prop.aircraft(actype)
 
+    # Get the maximum fuel capacity (liters)
+    MFC = ac1['limits']['MFC']
+
+    # Compute the fuel weight (Max. Fuel Mass)
+    MFW = MFC * 0.80   # Jet A density 0.8 kg/liter
+    
     # Get mass design limits
     MTOW = ac1['limits']['MTOW']  # Kg
 
-    # Get the MLW for this airframe
-    MLW = ac1['limits']['MLW']  # Kg
-
-    # Get the OEW for this airframe
+    # Get OEW
     OEW = ac1['limits']['OEW']  # Kgs
 
-    # Get the MFC for this airframe
-    MFC = ac1['limits']['MFC']  # Kgs
+    # Get mass design limits
+    MLW = ac1['limits']['MLW']  # Kg
+
+    # Max Payload Weight = Max. take off weight - Max fuel weight - empty weight
+    MPW = MTOW - MFW - OEW
+
+    # Eval mission weight = operating empty weight + payload weight*factor + fuel weight*factor
+    MW = OEW + (MPW * payload_factor) + (MFW * fuel_factor)
+
+    if diagnostics:
+        print("OEW:", OEW)
+        print("MPW:", MPW)
+        print("MFW:", MFW)
+
+    return MW, MTOW, MLW, OEW, MFW * fuel_factor, MPW * payload_factor
+
+
+
+def compute_emissions(trajectory, actype, payload_factor, fuel_factor, debug):
+
+    # Define fuel flow object with default engine (TODO add specifici with Cirium)
+    ff = FuelFlow(actype)
+    
+    # Get the mission weight (Mass) (fuel + payload + OEW)
+    Mass_ini, MTOW, MLW, OEW, Fuel_weight, Payload_weight = computute_mission_weight(actype, payload_factor, fuel_factor, False)
 
     path_angles = trajectory.path_angle_radians
     
     # Time spent over each segment (in-between waypoints)
     time_deltas = trajectory.elapsed_time_seconds
 
-    # Set the initial mass to "some fraction" of MTOW
-    mass_init = massfrac * MTOW
-    mass = mass_init
+    # Mission mass cannot be less than operational empty weight - 
+    if Fuel_weight  == 0:
+        print("Fuel weight cannot be zero")
+        sys.exit()
+
+    mass = Mass_ini
+
+    if mass > MTOW:
+        print("Mission weight is greater than MTOW!")
+        print("Design MTOW: ", MTOW)
+        print("Mission weight: ", mass)
+        computute_mission_weight(actype, payload_factor, fuel_factor, True)
+        sys.exit()
 
     # Determine the number of segments
     n = len(time_deltas)
@@ -43,13 +77,20 @@ def compute_emissions(trajectory, actype, massfrac, debug):
             print(f"Skipping index {i} due to missing data.")
             continue
         fuelflow = ff.enroute(mass, tas, alt, pa)
-        # Here fuelflow is change in mass (fuel burn) over a segment
+        # Here fuelflow is change in mass (fuel burn) over a segment (Kg/s over segment)
         mass -= fuelflow * dt
 
+        if mass < (OEW + Payload_weight):
+            print("Current mission weight is less than  OEW + Payload")
+            print("Not enough fuel to complete mission")
+            print("Available mission fuel weight: ", Fuel_weight)
+            sys.exit()
+
+
         if debug:
+            # Exit if fuel burn invalid 
             if pd.isna(fuelflow * dt):
                 print("Fuel burn calculation resulted in NAN, stopping execution")
-
                 print("Aircraft: ", actype)
                 print("Current dt:", dt)
                 print("Current fuelflow:", fuelflow)
@@ -62,12 +103,18 @@ def compute_emissions(trajectory, actype, massfrac, debug):
         # Store the product of fuelflow and dt directly in the preallocated array
         fuel_consumption_array[i] = fuelflow * dt
 
+    fuelburn = Mass_ini - mass
     # Ensure that the final mass is less than or equal to design MLW
     if (mass > MLW):
-        print("ERROR: Current mass fraction and mission profile reuslts in exceeding MLW")
+        print("ERROR: Final mass exceeds maximum design landing weight")
+        print("Final mission mass: ", mass)
+        print("Max. landing weight: ", MLW)
+        print("Initial fuel weight:", )
+        print("Fuel burn: ", fuelburn)
+
         sys.exit()
 
-    fuelburn = mass_init - mass
+    
 
     print("Fuel burn: ", fuelburn)
 

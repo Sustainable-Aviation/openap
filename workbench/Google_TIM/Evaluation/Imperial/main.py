@@ -30,7 +30,13 @@ df_wyp = read_parquet_header(file_path_2)  # Dataframe with flight speed, waypoi
 Target_id = "190107-72701-IBE32HL"
 
 debug = False
-Limit = 3000
+Limit = 2
+
+# Fuel load factor
+fuel_factor = 0.001
+
+# Payload factor
+payload_factor = 0.90
 
 # List to hold data for all flights for plotting
 all_flights_data = []
@@ -65,11 +71,11 @@ for flight_id in df_sum['flight_id'].unique():
             if debug:
                 print(flight_data['flight_id'])
                 processed_df.to_csv("Failing.csv")
-                fuel_burn = utl.compute_emissions(processed_df, airFrame, 0.75, debug)
+                fuel_burn = utl.compute_emissions(processed_df, airFrame, payload_factor, fuel_factor, debug)
 
             else:
 
-                fuel_burn = utl.compute_emissions(processed_df, airFrame, 0.75, debug)       
+                fuel_burn = utl.compute_emissions(processed_df, airFrame, payload_factor, fuel_factor, debug)       
 
 
                 # Add the computed fuel burn to the DataFrame
