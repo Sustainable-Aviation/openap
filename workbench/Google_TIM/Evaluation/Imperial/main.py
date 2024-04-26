@@ -30,69 +30,74 @@ df_wyp = read_parquet_header(file_path_2)  # Dataframe with flight speed, waypoi
 Target_id = "190107-72701-IBE32HL"
 
 debug = False
-Limit = 2
+Limit = 300
 
 # Fuel load factor
-fuel_factor = 0.001
+fuel_factor = 0.55
 
 # Payload factor
-payload_factor = 0.90
+payload_factor = 0.70
 
 # List to hold data for all flights for plotting
 all_flights_data = []
 
 count  = 0
 
-# Loop through each unique flight_id in df_sum
-for flight_id in df_sum['flight_id'].unique():
-    if debug:
-        if flight_id == Target_id:
-            flight_data = df_sum[df_sum['flight_id'] == flight_id]
+plot_fuel_burn = False
+
+if plot_fuel_burn:
+    # Loop through each unique flight_id in df_sum
+    for flight_id in df_sum['flight_id'].unique():
+        if debug:
+            if flight_id == Target_id:
+                flight_data = df_sum[df_sum['flight_id'] == flight_id]
         
-    else:
-        flight_data = df_sum[df_sum['flight_id'] == flight_id]
+        else:
+            flight_data = df_sum[df_sum['flight_id'] == flight_id]
 
-        if count > Limit:
-            break
+            if count > Limit:
+                break
 
-        airframe = flight_data['aircraft_type_icao'].iloc[0]
+            airframe = flight_data['aircraft_type_icao'].iloc[0]
 
-        # Select matching waypoints data
-        matching_rows = df_wyp[df_wyp['flight_id'] == flight_id]
+            # Select matching waypoints data
+            matching_rows = df_wyp[df_wyp['flight_id'] == flight_id]
 
-        if not matching_rows.empty:
-            matching_rows = matching_rows.copy()
-            processed_df = utl.processFlightdata(matching_rows)
+            if not matching_rows.empty:
+                matching_rows = matching_rows.copy()
+                processed_df = utl.processFlightdata(matching_rows)
 
-            # See if a fallback airframe is required (if not supported in openAP )
-            print("Current airframe: ", airframe)
-            airFrame = utl.fallback(airframe)
+                # See if a fallback airframe is required (if not supported in openAP )
+                print("Current airframe: ", airframe)
+                airFrame = utl.fallback(airframe)
 
-            if debug:
-                print(flight_data['flight_id'])
-                processed_df.to_csv("Failing.csv")
-                fuel_burn = utl.compute_emissions(processed_df, airFrame, payload_factor, fuel_factor, debug)
+                if debug:
+                    print(flight_data['flight_id'])
+                    processed_df.to_csv("Failing.csv")
+                    fuel_burn = utl.compute_emissions(processed_df, airFrame, payload_factor, fuel_factor, debug)
 
-            else:
+                else:
 
-                fuel_burn = utl.compute_emissions(processed_df, airFrame, payload_factor, fuel_factor, debug)       
+                    fuel_burn = utl.compute_emissions(processed_df, airFrame, payload_factor, fuel_factor, debug)       
 
 
                 # Add the computed fuel burn to the DataFrame
-                processed_df['fuel_burn'] = fuel_burn
+                    processed_df['fuel_burn'] = fuel_burn
 
-                all_flights_data.append(processed_df)
+                    all_flights_data.append(processed_df)
 
-                #print(matching_rows.head(5))
+                    #print(matching_rows.head(5))
 
-        count  = count + 1
+            count  = count + 1
 
- # end df_sum loop   
+    # end df_sum loop   
 
-# Combine all data into a single DataFrame
-combined_data = pd.concat(all_flights_data, ignore_index=True)
+    # Combine all data into a single DataFrame
+    combined_data = pd.concat(all_flights_data, ignore_index=True)
 
-pProc.plot_map_fuelburn(combined_data)
+    #pProc.plot_map_fuelburn_waypoint(combined_data)
+
+    pProc.plot_map_fuelburn_total(combined_data)
 
 #################
 # Plot the altitude profile on world map
@@ -101,3 +106,7 @@ pProc.plot_map_fuelburn(combined_data)
 
 # Plot the distance bin distribution
 #pProc.plot_distance_bin(df_sum)
+
+#pProc.plot_distance_bin_actype(df_sum, "B739")
+
+pProc.plot_distance_bin_class(df_sum)

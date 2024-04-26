@@ -1,6 +1,10 @@
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
+import numpy as np
+import csv
+
+plt.style.use('seaborn-deep')
 
 def plot_map_altitude(df_sum, df_wyp):
 
@@ -146,73 +150,112 @@ def plot_distance_bin(df_sum):
         plt.show()
 
 
-def plot_map_singleFlight(long, lat, altitude):
+import pandas as pd
+import matplotlib.pyplot as plt
+
+def plot_distance_bin_actype(df_sum, actype):
+    """
+    Plot a histogram of the total distance traveled by flights, converted from kilometers to nautical miles,
+    and plot a specific histogram for A319 aircraft type.
+
+    Parameters:
+    df_sum (pd.DataFrame): DataFrame containing the flight summary data. Must include columns 'total_distance_km' and 'aircraft_type'.
+
+    Returns:
+    None: This function does not return any values. It directly saves and displays a plot.
+
+    Raises:
+    KeyError: If 'total_distance_km' or 'aircraft_type' does not exist in df_sum, the function will not perform the conversion or plotting and will finish without altering the state.
+
+    Side Effects:
+    - Modifies the global matplotlib DPI settings which may affect other plots.
+    - Saves a PNG file to 'Output/Plots/Distance_bin.png'.
+    - Displays the plot using plt.show().
+    """
+
+    if 'total_distance_km' not in df_sum.columns or 'aircraft_type_icao' not in df_sum.columns:
+        raise KeyError("DataFrame must include 'total_distance_km' and 'aircraft_type_icao' columns")
+
+    # Convert kilometers to nautical miles
+    df_sum['total_distance_nm'] = df_sum['total_distance_km'] * 0.539957
+
+    unique_aircraft_types = df_sum['aircraft_type_icao'].unique()
+    unique_aircraft_types_df = pd.DataFrame(unique_aircraft_types, columns=['aircraft_type_icao'])
+
+    unique_aircraft_types_df.to_csv("Aircraft_type.csv")
+
+    # Specific plot for A319
+    actype_data = df_sum[df_sum['aircraft_type_icao'] == actype]
 
 
-    # Normalize the altitude values to a range between 0 and 1 for coloring
-    norm = plt.Normalize(altitude.min(), altitude.max())
-    cmap = plt.cm.viridis  # Color map
+    if not actype_data.empty:
+        fig1 = plt.figure()
+        ax1 = fig1.gca()
+        plt.hist(actype_data['total_distance_nm'], bins=30, color='C0', edgecolor='black')
+        #plt.title('Frequency Distribution of Total Distance Travelled by A319 Flights')
+        plt.xlabel('Ground track distance (nmi)', fontname="Times New Roman", fontsize=20)
+        plt.ylabel('Frequency', fontname="Times New Roman", fontsize=20)
+        for axis in ['top', 'bottom', 'left', 'right']:
+            ax1.spines[axis].set_linewidth(1.5)
+        plt.xticks(fontname="Times New Roman", fontsize=20)
+        plt.yticks(fontname="Times New Roman", fontsize=20)
 
-    fig, ax = plt.subplots(figsize=(20, 10), subplot_kw={'projection': ccrs.Robinson()})
-    ax.set_global()  # Ensure the entire globe is displayed
-    ax.add_feature(cfeature.COASTLINE)
-    ax.add_feature(cfeature.BORDERS, linestyle=':')
-    #ax.add_feature(cfeature.OCEAN, alpha=0.1)
-    #ax.add_feature(cfeature.LAKES, alpha=0.5)
-    #ax.add_feature(cfeature.RIVERS)
+        plt.rcParams['figure.dpi'] = 300
+        plt.rcParams['savefig.dpi'] = 300
 
-    # Scatter plot for latitude and longitude data, color-coded by altitude
-    sc = ax.scatter(long, lat, c=altitude, cmap=cmap, norm=norm, transform=ccrs.Geodetic(), marker='o', s =6)
+        F = plt.gcf()
+        Size = F.get_size_inches()
+        F.set_size_inches(Size[0]*1.7, Size[1]*1.5, forward=True)
 
-    cbar = plt.colorbar(sc, ax=ax, orientation='vertical', fraction=0.02, pad=0.02)
-    cbar.set_label('Altitude (feet)', fontsize=20, fontname = "Times New Roman")
+        plt.xlim([0, 9000])
+        plt.ylim([0, 22])
+        filename = f'Output/Plots/Aircraft_distance/{actype}_Distance_bin.png'
+        plt.savefig(filename)
+        plt.show()
 
-    cbar.ax.tick_params(labelsize=18)  # Set font size of the colorbar tick labels
+def plot_distance_bin_class(df_sum):
+    narrow_body = ["A319", "A320", "A321", "A20N", "B734", "B737", "B738", "B739", "E170", "E195", "E75L"]
+    wide_body = ["B789", "B788", "B77W", "B772", "B763", "A359", "A333", "A332", "A343"]
 
+    if 'total_distance_km' not in df_sum.columns or 'aircraft_type_icao' not in df_sum.columns:
+        raise KeyError("DataFrame must include 'total_distance_km' and 'aircraft_type_icao' columns")
 
-    for label in cbar.ax.get_yticklabels():
-        label.set_family("Times New Roman")
+    # Convert kilometers to nautical miles
+    df_sum['total_distance_nm'] = df_sum['total_distance_km'] * 0.539957
 
-    plt.show()    
+    # Filter data for narrow-body and wide-body
+    df_narrow = df_sum[df_sum['aircraft_type_icao'].isin(narrow_body)]
+    df_wide = df_sum[df_sum['aircraft_type_icao'].isin(wide_body)]
 
-def plot_map_fuelburn(matching_rows):
+    fig1 = plt.figure()
+    ax1 = fig1.gca()
 
-    fig = plt.figure(figsize=(20, 10))
-    ax = fig.add_subplot(1, 1, 1, projection=ccrs.Robinson())
+    # Plotting
+    plt.hist(df_narrow['total_distance_nm'], bins=30, alpha=0.7, label='Narrow Body', edgecolor='black', color = 'C0')
+    plt.hist(df_wide['total_distance_nm'], bins=30, alpha=0.7, label='Wide Body', edgecolor='black', color = "C2")
 
-    ax.add_feature(cfeature.COASTLINE)
-    ax.add_feature(cfeature.BORDERS, linestyle=':')
-    #ax.add_feature(cfeature.OCEAN, alpha=0.1)
-    #ax.add_feature(cfeature.LAKES, alpha=0.5)
-    #ax.add_feature(cfeature.RIVERS)
-    ax.set_global()
+    plt.xlabel('Ground track distance (nmi)', fontname="Times New Roman", fontsize=20)
+    plt.ylabel('Frequency', fontname="Times New Roman", fontsize=20)
+    plt.legend()
+    
+    for axis in ['top', 'bottom', 'left', 'right']:
+            ax1.spines[axis].set_linewidth(1.5)
 
-    # Remove bounding box/spines
-    for spine in ax.spines.values():
-        spine.set_visible(False)
-
-    latitude = matching_rows['latitude']
-    longitude = matching_rows['longitude']
-    fuel_burn = matching_rows['fuel_burn']
-
-    # Normalize the altitude values to a range between 0 and 1 for coloring
-    norm = plt.Normalize(fuel_burn.min(), fuel_burn.max())
-    cmap = plt.cm.viridis  # Color map
-
-    # Scatter plot for latitude and longitude data, color-coded by altitude
-    sc = ax.scatter(longitude, latitude, c=fuel_burn, cmap=cmap, norm=norm, transform=ccrs.Geodetic(), marker='o', s =1)
-
-    cbar = plt.colorbar(sc, ax=ax, orientation='vertical', fraction=0.02, pad=0.02)
-    cbar.set_label('Fuel burn (Kg)', fontsize=20, fontname = "Times New Roman")
-
-    # Customize colorbar tick labels
-    cbar.ax.tick_params(labelsize=18)  # Set font size of the colorbar tick labels
-
-    for label in cbar.ax.get_yticklabels():
-        label.set_family("Times New Roman")
+    plt.xticks(fontname="Times New Roman", fontsize=20)
+    plt.yticks(fontname="Times New Roman", fontsize=20)
 
     plt.rcParams['figure.dpi'] = 300
     plt.rcParams['savefig.dpi'] = 300
-    plt.savefig('Output/Plots/Map_Fuel_bun.png')
 
+    F = plt.gcf()
+    Size = F.get_size_inches()
+    F.set_size_inches(Size[0]*1.7, Size[1]*1.5, forward=True)
+
+    plt.xlim([0, 9000])
+    plt.ylim([0, 300])
+    plt.savefig("Output/Plots/Aircraft_distance/Class_frequency_dist.png")
     plt.show()
+
+# Example usage:
+# Assuming you have a DataFrame 'df' that includes the necessary columns
+# plot_distance_bin_class(df)
