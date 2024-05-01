@@ -12,6 +12,12 @@ def computute_mission_weight(actype, payload_factor, fuel_factor, diagnostics):
     # Get the maximum fuel capacity (liters)
     MFC = ac1['limits']['MFC']
 
+    # Fuel weight breakdown
+    Trip_Fuel = MFC * fuel_factor
+
+    # Reserve fuel (assume 20 % of maximum fuel)
+    Reserve_Fuel = MFC * 0.20
+
     # Compute the fuel weight (Max. Fuel Mass)
     MFW = MFC * 0.80   # Jet A density 0.8 kg/liter
     
@@ -27,15 +33,16 @@ def computute_mission_weight(actype, payload_factor, fuel_factor, diagnostics):
     # Max Payload Weight = Max. take off weight - Max fuel weight - empty weight
     MPW = MTOW - MFW - OEW
 
-    # Eval mission weight = operating empty weight + payload weight*factor + fuel weight*factor
-    MW = OEW + (MPW * payload_factor) + (MFW * fuel_factor)
+    # Eval mission weight = operating empty weight + payload weight*factor + fuel weight
+    MW = OEW + (MPW * payload_factor) + Trip_Fuel + Reserve_Fuel
 
     if diagnostics:
         print("OEW:", OEW)
         print("MPW:", MPW)
         print("MFW:", MFW)
+  
+    return MW, MTOW, MLW, OEW, Trip_Fuel, Reserve_Fuel, MPW * payload_factor
 
-    return MW, MTOW, MLW, OEW, MFW * fuel_factor, MPW * payload_factor
 
 
 
@@ -45,7 +52,7 @@ def compute_emissions(trajectory, actype, payload_factor, fuel_factor, debug):
     ff = FuelFlow(actype)
     
     # Get the mission weight (Mass) (fuel + payload + OEW)
-    Mass_ini, MTOW, MLW, OEW, Fuel_weight, Payload_weight = computute_mission_weight(actype, payload_factor, fuel_factor, False)
+    Mass_ini, MTOW, MLW, OEW, Trip_Fuel, Reserve_Fuel, Payload_weight = computute_mission_weight(actype, payload_factor, fuel_factor, False)
 
     path_angles = trajectory.path_angle_radians
     
@@ -53,8 +60,8 @@ def compute_emissions(trajectory, actype, payload_factor, fuel_factor, debug):
     time_deltas = trajectory.elapsed_time_seconds
 
     # Mission mass cannot be less than operational empty weight - 
-    if Fuel_weight  == 0:
-        print("Fuel weight cannot be zero")
+    if Trip_Fuel  == 0:
+        print("Trip fuel weight cannot be zero")
         sys.exit()
 
     mass = Mass_ini
@@ -80,12 +87,11 @@ def compute_emissions(trajectory, actype, payload_factor, fuel_factor, debug):
         # Here fuelflow is change in mass (fuel burn) over a segment (Kg/s over segment)
         mass -= fuelflow * dt
 
-        if mass < (OEW + Payload_weight):
-            print("Current mission weight is less than  OEW + Payload")
-            print("Not enough fuel to complete mission")
-            print("Available mission fuel weight: ", Fuel_weight)
+        if mass < (OEW + Payload_weight + Reserve_Fuel):
+            print("Current mission weight is less than  OEW + Payload + Reserve_Fuel")
+            print("Not enough fuel to complete mission under normal conditions")
+            print("Available mission fuel weight: ", Trip_Fuel)
             sys.exit()
-
 
         if debug:
             # Exit if fuel burn invalid 
@@ -234,6 +240,126 @@ def processFlightdata(matching_rows):
     return matching_rows
 
 
+
+def getfuelBurn(actype, payload_factor, trajectory,MTOW, MFC, MLW, OEW, fuel_factor, Payload_weight, debug):
+
+    # Define fuel flow object with default engine (TODO add specific engine with Cirium)
+    ff = FuelFlow(actype)
+
+    # Fuel weight breakdown
+    Trip_Fuel = MFC * fuel_factor
+
+    # Reserve fuel (assume 20 % of maximum fuel capacity)
+    Reserve_Fuel = MFC * 0.20
+
+    # Eval mission weight = operating empty weight + payload weight_factor + fuel weight
+    Mass_ini = OEW + Payload_weight + Trip_Fuel + Reserve_Fuel
+
+    # Initial mass
+    mass = Mass_ini
+
+    # Mission weight cannot be greater than MTOW
+    if mass > MTOW:
+        print("Mission weight is greater than MTOW!")
+        print("Design MTOW: ", MTOW)
+        print("Mission weight: ", mass)
+        computute_mission_weight(actype, payload_factor, fuel_factor, True)
+        raise ValueError("Mission weight is greater than MTOW!")
+    
+    if Trip_Fuel == 0:
+        raise ValueError("Trip fuel is zero, cannot start mission on reserves")
+
+    # Compute path angles from trajectory
+    path_angles = trajectory.path_angle_radians
+
+    # Time spent over each segment (in-between waypoints)
+    time_deltas = trajectory.elapsed_time_seconds
+
+    # Determine the number of segments
+    n = len(time_deltas)
+
+    # Initialize a NumPy array of zeros with size n to store fuelflow*dt values
+    fuel_consumption_array = np.zeros(n)
+
+    for i, (dt, tas, alt, pa) in enumerate(zip(time_deltas, trajectory.true_airspeed_knots, trajectory.altitude_ft, path_angles)):
+            
+        if None in (dt, tas, alt, pa):
+            print(f"Skipping index {i} due to missing data.")
+            continue
+
+        fuelflow = ff.enroute(mass, tas, alt, pa)
+
+        # Here fuelflow is change in mass (fuel burn) over a segment (Kg/s over segment)
+        mass -= fuelflow * dt
+
+        if mass < (OEW + Payload_weight + Reserve_Fuel):
+            raise ValueError("Not enough trip fuel to complete the mission")
+
+        if debug:
+            if pd.isna(fuelflow * dt):
+                raise ValueError("Fuel burn calculation resulted in NaN")
+
+        # If all checks passed, append the fuel_consumption array     
+        fuel_consumption_array[i] = fuelflow * dt
+
+    # Fuel burn Caclulation ends
+
+    # Check if the final mass does not exceed maximum landing weight
+    if mass > MLW:
+        raise ValueError("Final mass exceeds maximum design landing weight")
+                
+    print("Fuel burn:", Mass_ini - mass)
+    print("---------------------------------------------------------------------")
+
+    return fuel_consumption_array
+
+
+def compute_emissions_beta(trajectory, actype, payload_factor, debug):
+    # Define fuel flow object with default engine (TODO add specifici with Cirium)
+    ff = FuelFlow(actype)
+
+     # Get aircraft type
+    ac1 = prop.aircraft(actype)
+
+    # Get the maximum fuel capacity (liters)
+    MFC = ac1['limits']['MFC']
+
+    # Compute the fuel weight (Max. Fuel Mass)
+    MFW = MFC * 0.80   # Jet A density 0.8 kg/liter
+    
+    # Get mass design limits
+    MTOW = ac1['limits']['MTOW']  # Kg
+
+    # Get OEW
+    OEW = ac1['limits']['OEW']  # Kgs
+
+    # Get mass design limits
+    MLW = ac1['limits']['MLW']  # Kg
+
+    # Max Payload Weight = Max. take off weight - Max fuel weight - empty weight
+    MPW = MTOW - MFW - OEW
+
+    # Payload weight is some fraction of total payload capacity
+    Payload_weight = MPW * payload_factor
+
+    # Set initial fuel_factor/ fraction
+    fuel_factor = 0.01
+
+    max_tries = 50  # Maximum number of tries including the initial attempt
+    increment = 0.02
+
+
+    for attempt in range(max_tries):
+        try:
+            print(f"Attempt {attempt + 1} with fuel factor {fuel_factor}")
+            return getfuelBurn(actype, payload_factor, trajectory, MTOW, MFC, MLW, OEW, fuel_factor, Payload_weight, debug)
+        except ValueError as e:
+            print(f"Error on attempt {attempt + 1} with fuel factor {fuel_factor}: {e}")
+            fuel_factor += increment  # Increase the fuel factor for the next attempt
+
+            if attempt == max_tries - 1:
+                print("Max retries reached. Unable to calculate emissions with the given parameters.")
+                raise  # Re-raise the last exception to indicate failure after all retries
 
 
 

@@ -25,15 +25,18 @@ file_path_2 = 'Data/ICCT_GAIA_Flight_Waypoints_Sample.pq'
 df_sum = read_parquet_header(file_path_1)  # Datadrame with flight summary
 df_wyp = read_parquet_header(file_path_2)  # Dataframe with flight speed, waypoints
 
+narrow_body = ["A319", "A320", "A321", "A20N", "B734", "B737", "B738", "B739", "E170", "E195", "E75L"]
+wide_body = ["B789", "B788", "B77W", "B772", "B763", "A359", "A333", "A332", "A343"]
+
 #Target_id = "190107-10182-AZU2585"
 #Target_id = "190114-20090-AAL1294"
 Target_id = "190107-72701-IBE32HL"
 
 debug = False
-Limit = 300
+Limit = 1
 
 # Fuel load factor
-fuel_factor = 0.55
+fuel_factor = 0.01
 
 # Payload factor
 payload_factor = 0.70
@@ -43,7 +46,7 @@ all_flights_data = []
 
 count  = 0
 
-plot_fuel_burn = False
+plot_fuel_burn = True
 
 if plot_fuel_burn:
     # Loop through each unique flight_id in df_sum
@@ -68,17 +71,17 @@ if plot_fuel_burn:
                 processed_df = utl.processFlightdata(matching_rows)
 
                 # See if a fallback airframe is required (if not supported in openAP )
+                print("---------------------------------------------------------------------")
                 print("Current airframe: ", airframe)
                 airFrame = utl.fallback(airframe)
 
                 if debug:
                     print(flight_data['flight_id'])
                     processed_df.to_csv("Failing.csv")
-                    fuel_burn = utl.compute_emissions(processed_df, airFrame, payload_factor, fuel_factor, debug)
+                    fuel_burn = utl.compute_emissions_beta(processed_df, airFrame, payload_factor, debug)
 
                 else:
-
-                    fuel_burn = utl.compute_emissions(processed_df, airFrame, payload_factor, fuel_factor, debug)       
+                    fuel_burn = utl.compute_emissions_beta(processed_df, airFrame, payload_factor, debug)       
 
 
                 # Add the computed fuel burn to the DataFrame
@@ -97,7 +100,7 @@ if plot_fuel_burn:
 
     #pProc.plot_map_fuelburn_waypoint(combined_data)
 
-    pProc.plot_map_fuelburn_total(combined_data)
+    #pProc.plot_map_fuelburn_total(combined_data)
 
 #################
 # Plot the altitude profile on world map
@@ -109,4 +112,8 @@ if plot_fuel_burn:
 
 #pProc.plot_distance_bin_actype(df_sum, "B739")
 
-pProc.plot_distance_bin_class(df_sum)
+#pProc.plot_distance_bin_class(df_sum)
+
+#pProc.plot_aircraft_class_donut(df_sum)
+
+#pProc.plot_map_groundTrack_total(df_sum)
