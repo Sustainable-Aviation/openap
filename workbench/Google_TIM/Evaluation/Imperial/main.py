@@ -98,9 +98,11 @@ if plot_fuel_burn:
     # Combine all data into a single DataFrame
     combined_data = pd.concat(all_flights_data, ignore_index=True)
 
+
+    print(combined_data.head(2))
     #pProc.plot_map_fuelburn_waypoint(combined_data)
 
-    #pProc.plot_map_fuelburn_total(combined_data)
+    pProc.plot_map_fuelburn_total(combined_data)
 
 #################
 # Plot the altitude profile on world map

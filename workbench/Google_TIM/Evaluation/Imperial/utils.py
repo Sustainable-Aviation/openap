@@ -307,11 +307,12 @@ def getfuelBurn(actype, payload_factor, trajectory,MTOW, MFC, MLW, OEW, fuel_fac
     # Check if the final mass does not exceed maximum landing weight
     if mass > MLW:
         raise ValueError("Final mass exceeds maximum design landing weight")
-                
-    print("Fuel burn:", Mass_ini - mass)
+
+    fuelBurn = Mass_ini - mass    
+    print("Fuel burn:", fuelBurn)
     print("---------------------------------------------------------------------")
 
-    return fuel_consumption_array
+    return fuelBurn
 
 
 def compute_emissions_beta(trajectory, actype, payload_factor, debug):
@@ -361,5 +362,5 @@ def compute_emissions_beta(trajectory, actype, payload_factor, debug):
                 print("Max retries reached. Unable to calculate emissions with the given parameters.")
                 raise  # Re-raise the last exception to indicate failure after all retries
 
-
+  
 
