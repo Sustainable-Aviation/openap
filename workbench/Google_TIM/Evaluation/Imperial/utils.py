@@ -16,7 +16,7 @@ def computute_mission_weight(actype, payload_factor, fuel_factor, diagnostics):
     Trip_Fuel = MFC * fuel_factor
 
     # Reserve fuel (assume 20 % of maximum fuel)
-    Reserve_Fuel = MFC * 0.20
+    Reserve_Fuel = MFC * 0.10
 
     # Compute the fuel weight (Max. Fuel Mass)
     MFW = MFC * 0.80   # Jet A density 0.8 kg/liter
@@ -37,9 +37,10 @@ def computute_mission_weight(actype, payload_factor, fuel_factor, diagnostics):
     MW = OEW + (MPW * payload_factor) + Trip_Fuel + Reserve_Fuel
 
     if diagnostics:
+        print("MTOW:", MTOW)
         print("OEW:", OEW)
-        print("MPW:", MPW)
         print("MFW:", MFW)
+        print("MPW:", MPW)
   
     return MW, MTOW, MLW, OEW, Trip_Fuel, Reserve_Fuel, MPW * payload_factor
 
@@ -140,6 +141,11 @@ def fallback(airframe):
     if airframe == "B734":
         print("B734 not supported, selecting B737 as fallback airframe \n")
         alt_airframe = "B737"
+        return alt_airframe
+    
+    if airframe == "B772":
+        print("B772 not supported, selecting B77W as fallback airframe \n")
+        alt_airframe = "B77W"
         return alt_airframe    
     
     else:
@@ -293,6 +299,9 @@ def getfuelBurn(actype, payload_factor, trajectory,MTOW, MFC, MLW, OEW, fuel_fac
         mass -= fuelflow * dt
 
         if mass < (OEW + Payload_weight + Reserve_Fuel):
+            print("Current mission weight: ", mass)
+            print("Current Fuel weight: ", (OEW + Payload_weight + Reserve_Fuel)-mass )
+            print("Trip fuel weight: ", Trip_Fuel)
             raise ValueError("Not enough trip fuel to complete the mission")
 
         if debug:
@@ -352,14 +361,16 @@ def compute_emissions_beta(trajectory, actype, payload_factor, debug):
 
     for attempt in range(max_tries):
         try:
-            print(f"Attempt {attempt + 1} with fuel factor {fuel_factor}")
+            print(f"Attempt {attempt + 1} with fuel factor {fuel_factor:.2f}")
             return getfuelBurn(actype, payload_factor, trajectory, MTOW, MFC, MLW, OEW, fuel_factor, Payload_weight, debug)
         except ValueError as e:
-            print(f"Error on attempt {attempt + 1} with fuel factor {fuel_factor}: {e}")
+            print(f"Attempt {attempt + 1} with fuel factor {fuel_factor:.2f}: {e}")
             fuel_factor += increment  # Increase the fuel factor for the next attempt
 
             if attempt == max_tries - 1:
                 print("Max retries reached. Unable to calculate emissions with the given parameters.")
+                print("Flight ID : ", trajectory['flight_id'])
+                #print("Current mission distance: ", trajectory['cumulative_distance_nmi'])
                 raise  # Re-raise the last exception to indicate failure after all retries
 
   

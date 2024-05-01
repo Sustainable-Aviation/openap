@@ -28,78 +28,114 @@ df_wyp = read_parquet_header(file_path_2)  # Dataframe with flight speed, waypoi
 narrow_body = ["A319", "A320", "A321", "A20N", "B734", "B737", "B738", "B739", "E170", "E195", "E75L"]
 wide_body = ["B789", "B788", "B77W", "B772", "B763", "A359", "A333", "A332", "A343"]
 
-#Target_id = "190107-10182-AZU2585"
-#Target_id = "190114-20090-AAL1294"
-Target_id = "190107-72701-IBE32HL"
+
+Target_id = "190114-72410-AFL106"
+
+# List of flight IDs to exclude
+excluded_flight_ids = ["190110-93704-ARG1844", "190114-77651-CES201",  "190111-69033-GCR7939", "190113-51219-CRL953", "190107-99735-ARG1141", "190115-24252-AEA023", "190112-45597-QFA107", "190114-72410-AFL106"]
 
 debug = False
-Limit = 1
+Limit = 500
 
-# Fuel load factor
-fuel_factor = 0.01
 
 # Payload factor
-payload_factor = 0.70
+payload_factor = 0.50
 
 # List to hold data for all flights for plotting
 all_flights_data = []
 
 count  = 0
-
+global_iter = 0
 plot_fuel_burn = True
 
 if plot_fuel_burn:
     # Loop through each unique flight_id in df_sum
-    for flight_id in df_sum['flight_id'].unique():
+    for index, row in df_sum.iterrows():
+        flight_id = row['flight_id']
+
         if debug:
             if flight_id == Target_id:
                 flight_data = df_sum[df_sum['flight_id'] == flight_id]
-        
-        else:
-            flight_data = df_sum[df_sum['flight_id'] == flight_id]
+                airframe = flight_data['aircraft_type_icao'].iloc[0]
+                matching_rows = df_wyp[df_wyp['flight_id'] == flight_id]
 
-            if count > Limit:
-                break
+                if not matching_rows.empty:
+                    matching_rows = matching_rows.copy()
+                    processed_df = utl.processFlightdata(matching_rows)
 
-            airframe = flight_data['aircraft_type_icao'].iloc[0]
+            
 
-            # Select matching waypoints data
-            matching_rows = df_wyp[df_wyp['flight_id'] == flight_id]
+                    # See if a fallback airframe is required (if not supported in openAP )
+                    print("---------------------------------------------------------------------")
+                    print("Current airframe: ", airframe)
+                    airFrame = utl.fallback(airframe)
 
-            if not matching_rows.empty:
-                matching_rows = matching_rows.copy()
-                processed_df = utl.processFlightdata(matching_rows)
-
-                # See if a fallback airframe is required (if not supported in openAP )
-                print("---------------------------------------------------------------------")
-                print("Current airframe: ", airframe)
-                airFrame = utl.fallback(airframe)
-
-                if debug:
-                    print(flight_data['flight_id'])
+                
+                    #print(flight_data['flight_id'])
                     processed_df.to_csv("Failing.csv")
                     fuel_burn = utl.compute_emissions_beta(processed_df, airFrame, payload_factor, debug)
+                    processed_df['fuel_burn'] = fuel_burn
 
-                else:
+
+                    pProc.plot_map_fuelburn_total(processed_df)
+
+
+        # Run in normal mode
+        else:
+            try:
+                global_iter = global_iter + 1
+                if flight_id in excluded_flight_ids:
+                    continue  # Skip this loop iteration
+
+                flight_data = df_sum[df_sum['flight_id'] == flight_id]
+
+                if count > Limit:
+                    break
+
+                airframe = flight_data['aircraft_type_icao'].iloc[0]
+
+                #if airframe == 'A332':
+                #    continue  # Something is wrong with A332, skip for now.
+
+                if airframe == 'A359':
+                    continue  # A359 not available
+
+                if airframe == 'B763':
+                    continue  # B763 Polar not available
+
+                #if airframe == 'B772':
+                #    continue  # B763 Polar not available
+
+                # Select matching waypoints data
+                matching_rows = df_wyp[df_wyp['flight_id'] == flight_id]
+
+                if not matching_rows.empty:
+                    matching_rows = matching_rows.copy()
+                    processed_df = utl.processFlightdata(matching_rows)
+
+                    # See if a fallback airframe is required (if not supported in openAP )
+                    print("---------------------------------------------------------------------")
+                    print("Current airframe: ", airframe)
+                    print("Global iter: ", global_iter)
+                    airFrame = utl.fallback(airframe)
+
+               
                     fuel_burn = utl.compute_emissions_beta(processed_df, airFrame, payload_factor, debug)       
 
 
-                # Add the computed fuel burn to the DataFrame
+                    # Add the computed fuel burn to the DataFrame
                     processed_df['fuel_burn'] = fuel_burn
 
                     all_flights_data.append(processed_df)
 
-                    #print(matching_rows.head(5))
-
-            count  = count + 1
-
+                count  = count + 1
+            except ValueError as e:
+                print("Failed to calculate fuel burn due to a ValueError:", e)
     # end df_sum loop   
 
-    # Combine all data into a single DataFrame
-    combined_data = pd.concat(all_flights_data, ignore_index=True)
+            # Combine all data into a single DataFrame
+            combined_data = pd.concat(all_flights_data, ignore_index=True)
 
-
-    print(combined_data.head(2))
     #pProc.plot_map_fuelburn_waypoint(combined_data)
 
     pProc.plot_map_fuelburn_total(combined_data)
