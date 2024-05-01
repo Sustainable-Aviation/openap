@@ -1,5 +1,5 @@
 import pandas as pd
-from openap import prop, FuelFlow
+from openap import prop, FuelFlow, Emission
 import numpy as np
 import sys
 from datetime import datetime
@@ -51,6 +51,7 @@ def compute_emissions(trajectory, actype, payload_factor, fuel_factor, debug):
 
     # Define fuel flow object with default engine (TODO add specifici with Cirium)
     ff = FuelFlow(actype)
+    emission = Emission(actype)
     
     # Get the mission weight (Mass) (fuel + payload + OEW)
     Mass_ini, MTOW, MLW, OEW, Trip_Fuel, Reserve_Fuel, Payload_weight = computute_mission_weight(actype, payload_factor, fuel_factor, False)
@@ -77,8 +78,17 @@ def compute_emissions(trajectory, actype, payload_factor, fuel_factor, debug):
     # Determine the number of segments
     n = len(time_deltas)
 
-    # Initialize a NumPy array of zeros with size n to store fuelflow*dt values
+    # Initialize an array of zeros with size n to store fuelflow*dt values
     fuel_consumption_array = np.zeros(n)
+
+    # Initialize emissions array
+    CO2_emissions_array = np.zeros(n)
+    H2O_emissions_array = np.zeros(n)
+    Nox_emissions_array = np.zeros(n)
+    CO_emissions_array = np.zeros(n)
+    HC_emissions_array = np.zeros(n)
+
+
 
     for i, (dt, tas, alt, pa) in enumerate(zip(time_deltas, trajectory.true_airspeed_knots, trajectory.altitude_ft, path_angles)):
         if None in (dt, tas, alt, pa):
@@ -110,6 +120,14 @@ def compute_emissions(trajectory, actype, payload_factor, fuel_factor, debug):
         # Store the product of fuelflow and dt directly in the preallocated array
         fuel_consumption_array[i] = fuelflow * dt
 
+        # Compute emissions
+        CO2_emissions_array[i] = emission.co2(fuelflow)
+        H2O_emissions_array[i] = emission.h2o(fuelflow)
+        Nox_emissions_array[i] = emission.nox(fuelflow)
+        CO_emissions_array[i] = emission.co(fuelflow)
+        HC_emissions_array[i] = HC = emission.hc(fuelflow)
+        
+    # Compute total fuel burn over entire mission
     fuelburn = Mass_ini - mass
     # Ensure that the final mass is less than or equal to design MLW
     if (mass > MLW):
@@ -130,17 +148,17 @@ def compute_emissions(trajectory, actype, payload_factor, fuel_factor, debug):
 
 def fallback(airframe):
     if airframe == "E195":
-        print("E195 not supported, selecting A319 as fallback airframe \n")
-        alt_airframe = "A319"
+        print("E195 not supported, selecting B737 as fallback airframe \n")
+        alt_airframe = "B737"
 
     if airframe == "A20N":
-        print("A20N not supported, selecting A320 as fallback airframe \n")
-        alt_airframe = "A320"
+        print("A20N not supported, selecting A319 as fallback airframe \n")
+        alt_airframe = "A319"
         return alt_airframe
 
     if airframe == "B734":
-        print("B734 not supported, selecting B737 as fallback airframe \n")
-        alt_airframe = "B737"
+        print("B734 not supported, selecting B738 as fallback airframe \n")
+        alt_airframe = "B738"
         return alt_airframe
     
     if airframe == "B772":
@@ -252,6 +270,9 @@ def getfuelBurn(actype, payload_factor, trajectory,MTOW, MFC, MLW, OEW, fuel_fac
     # Define fuel flow object with default engine (TODO add specific engine with Cirium)
     ff = FuelFlow(actype)
 
+    # Define emissions object
+    emission = Emission(actype)
+
     # Fuel weight breakdown
     Trip_Fuel = MFC * fuel_factor
 
@@ -287,6 +308,13 @@ def getfuelBurn(actype, payload_factor, trajectory,MTOW, MFC, MLW, OEW, fuel_fac
     # Initialize a NumPy array of zeros with size n to store fuelflow*dt values
     fuel_consumption_array = np.zeros(n)
 
+    # Initialize emissions array
+    CO2_emissions_array = np.zeros(n)
+    H2O_emissions_array = np.zeros(n)
+    Nox_emissions_array = np.zeros(n)
+    CO_emissions_array = np.zeros(n)
+    HC_emissions_array = np.zeros(n)
+
     for i, (dt, tas, alt, pa) in enumerate(zip(time_deltas, trajectory.true_airspeed_knots, trajectory.altitude_ft, path_angles)):
             
         if None in (dt, tas, alt, pa):
@@ -310,6 +338,13 @@ def getfuelBurn(actype, payload_factor, trajectory,MTOW, MFC, MLW, OEW, fuel_fac
 
         # If all checks passed, append the fuel_consumption array     
         fuel_consumption_array[i] = fuelflow * dt
+
+        # Compute emissions
+        CO2_emissions_array[i] = emission.co2(fuelflow)
+        H2O_emissions_array[i] = emission.h2o(fuelflow)
+        Nox_emissions_array[i] = emission.nox(fuelflow, tas, alt)
+        CO_emissions_array[i] = emission.co(fuelflow, tas, alt)
+        HC_emissions_array[i] = HC = emission.hc(fuelflow, tas, alt)
 
     # Fuel burn Caclulation ends
 

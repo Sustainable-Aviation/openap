@@ -35,7 +35,7 @@ Target_id = "190114-72410-AFL106"
 excluded_flight_ids = ["190110-93704-ARG1844", "190114-77651-CES201",  "190111-69033-GCR7939", "190113-51219-CRL953", "190107-99735-ARG1141", "190115-24252-AEA023", "190112-45597-QFA107", "190114-72410-AFL106"]
 
 debug = False
-Limit = 500
+Limit = 4000
 
 
 # Payload factor
@@ -98,13 +98,31 @@ if plot_fuel_burn:
                 #    continue  # Something is wrong with A332, skip for now.
 
                 if airframe == 'A359':
-                    continue  # A359 not available
+                    continue  # Kinematic model not available
+
+                if airframe == 'B772':
+                    continue  #  Kinematic model not available
+
+                if airframe == 'A20N':
+                    continue  #  Kinematic model not available
+
+                if airframe == 'A21N':
+                    continue  #  Kinematic model not available
+
+                if airframe == 'B734':
+                    continue  #  Kinematic model not available
 
                 if airframe == 'B763':
-                    continue  # B763 Polar not available
+                    continue  #  Drag polar not available
 
-                #if airframe == 'B772':
-                #    continue  # B763 Polar not available
+                if airframe == 'E170':
+                    continue  #  Drag polar not available
+
+                if airframe == 'E195':
+                    continue  #  Kinematic model not available
+
+                if airframe == 'E75L':
+                    continue  #  Kinematic model not available
 
                 # Select matching waypoints data
                 matching_rows = df_wyp[df_wyp['flight_id'] == flight_id]
@@ -117,10 +135,10 @@ if plot_fuel_burn:
                     print("---------------------------------------------------------------------")
                     print("Current airframe: ", airframe)
                     print("Global iter: ", global_iter)
-                    airFrame = utl.fallback(airframe)
+                    #airFrame = utl.fallback(airframe)
 
                
-                    fuel_burn = utl.compute_emissions_beta(processed_df, airFrame, payload_factor, debug)       
+                    fuel_burn = utl.compute_emissions_beta(processed_df, airframe, payload_factor, debug)       
 
 
                     # Add the computed fuel burn to the DataFrame
