@@ -327,9 +327,9 @@ def getfuelBurn(actype, payload_factor, trajectory,MTOW, MFC, MLW, OEW, fuel_fac
         mass -= fuelflow * dt
 
         if mass < (OEW + Payload_weight + Reserve_Fuel):
-            print("Current mission weight: ", mass)
-            print("Current Fuel weight: ", (OEW + Payload_weight + Reserve_Fuel)-mass )
-            print("Trip fuel weight: ", Trip_Fuel)
+            #print("Current mission weight: ", mass)
+            #print("Current Fuel weight: ", (OEW + Payload_weight + Reserve_Fuel)-mass )
+            #print("Trip fuel weight: ", Trip_Fuel)
             raise ValueError("Not enough trip fuel to complete the mission")
 
         if debug:
@@ -344,7 +344,7 @@ def getfuelBurn(actype, payload_factor, trajectory,MTOW, MFC, MLW, OEW, fuel_fac
         H2O_emissions_array[i] = emission.h2o(fuelflow)
         Nox_emissions_array[i] = emission.nox(fuelflow, tas, alt)
         CO_emissions_array[i] = emission.co(fuelflow, tas, alt)
-        HC_emissions_array[i] = HC = emission.hc(fuelflow, tas, alt)
+        HC_emissions_array[i] =  emission.hc(fuelflow, tas, alt)
 
     # Fuel burn Caclulation ends
 
@@ -352,11 +352,20 @@ def getfuelBurn(actype, payload_factor, trajectory,MTOW, MFC, MLW, OEW, fuel_fac
     if mass > MLW:
         raise ValueError("Final mass exceeds maximum design landing weight")
 
-    fuelBurn = Mass_ini - mass    
+    # Total fuel burn
+    fuelBurn = Mass_ini - mass
+
+    # Total Emissions
+    CO2 = np.sum(CO2_emissions_array)
+    H2O = np.sum(H2O_emissions_array)
+    NOX = np.sum(Nox_emissions_array)
+    CO = np.sum(CO_emissions_array)
+    HC = np.sum(HC_emissions_array)
+
     print("Fuel burn:", fuelBurn)
     print("---------------------------------------------------------------------")
 
-    return fuelBurn
+    return fuelBurn, CO2, H2O, NOX, CO, HC, Reserve_Fuel, Trip_Fuel, Payload_weight
 
 
 def compute_emissions_beta(trajectory, actype, payload_factor, debug):
@@ -396,15 +405,16 @@ def compute_emissions_beta(trajectory, actype, payload_factor, debug):
 
     for attempt in range(max_tries):
         try:
-            print(f"Attempt {attempt + 1} with fuel factor {fuel_factor:.2f}")
-            return getfuelBurn(actype, payload_factor, trajectory, MTOW, MFC, MLW, OEW, fuel_factor, Payload_weight, debug)
+            #print(f"Attempt {attempt + 1} with fuel factor {fuel_factor:.2f}")
+            fuel_burn, CO2, H2O, NOX, CO, HC, Reserve_fuel, Trip_fuel, Pyload_weight  =  getfuelBurn(actype, payload_factor, trajectory, MTOW, MFC, MLW, OEW, fuel_factor, Payload_weight, debug)
+            return fuel_burn, CO2, H2O, NOX, CO, HC, Reserve_fuel, Trip_fuel, Pyload_weight
         except ValueError as e:
-            print(f"Attempt {attempt + 1} with fuel factor {fuel_factor:.2f}: {e}")
+            #print(f"Attempt {attempt + 1} with fuel factor {fuel_factor:.2f}: {e}")
             fuel_factor += increment  # Increase the fuel factor for the next attempt
 
             if attempt == max_tries - 1:
-                print("Max retries reached. Unable to calculate emissions with the given parameters.")
-                print("Flight ID : ", trajectory['flight_id'])
+                #print("Max retries reached. Unable to calculate emissions with the given parameters.")
+                #print("Flight ID : ", trajectory['flight_id'])
                 #print("Current mission distance: ", trajectory['cumulative_distance_nmi'])
                 raise  # Re-raise the last exception to indicate failure after all retries
 

@@ -35,14 +35,17 @@ Target_id = "190114-72410-AFL106"
 excluded_flight_ids = ["190110-93704-ARG1844", "190114-77651-CES201",  "190111-69033-GCR7939", "190113-51219-CRL953", "190107-99735-ARG1141", "190115-24252-AEA023", "190112-45597-QFA107", "190114-72410-AFL106"]
 
 debug = False
-Limit = 4000
+Limit = 3000
 
 
 # Payload factor
-payload_factor = 0.50
+payload_factor = 0.3
 
 # List to hold data for all flights for plotting
 all_flights_data = []
+
+# Initialize list to hold all emissions data
+emissions_data = []
 
 count  = 0
 global_iter = 0
@@ -73,7 +76,7 @@ if plot_fuel_burn:
                 
                     #print(flight_data['flight_id'])
                     processed_df.to_csv("Failing.csv")
-                    fuel_burn = utl.compute_emissions_beta(processed_df, airFrame, payload_factor, debug)
+                    fuel_burn, CO2, H2O, NOX, CO, HC = utl.compute_emissions_beta(processed_df, airFrame, payload_factor, debug)
                     processed_df['fuel_burn'] = fuel_burn
 
 
@@ -84,8 +87,8 @@ if plot_fuel_burn:
         else:
             try:
                 global_iter = global_iter + 1
-                if flight_id in excluded_flight_ids:
-                    continue  # Skip this loop iteration
+                #if flight_id in excluded_flight_ids:
+                #    continue  # Skip this loop iteration
 
                 flight_data = df_sum[df_sum['flight_id'] == flight_id]
 
@@ -131,6 +134,10 @@ if plot_fuel_burn:
                     matching_rows = matching_rows.copy()
                     processed_df = utl.processFlightdata(matching_rows)
 
+                    processed_df.to_csv("processed.csv")
+
+                    
+
                     # See if a fallback airframe is required (if not supported in openAP )
                     print("---------------------------------------------------------------------")
                     print("Current airframe: ", airframe)
@@ -138,8 +145,23 @@ if plot_fuel_burn:
                     #airFrame = utl.fallback(airframe)
 
                
-                    fuel_burn = utl.compute_emissions_beta(processed_df, airframe, payload_factor, debug)       
+                    fuel_burn, CO2, H2O, NOX, CO, HC, Reserve_fuel, Trip_fuel, Payload_weight = utl.compute_emissions_beta(processed_df, airframe, payload_factor, debug)  
 
+                    # Append results to the list
+                    emissions_data.append({
+                        "flight_id": flight_id,
+                        "Aircraft IATA code": airframe,
+                        "Total distance (nm) (FF)": round(processed_df['cumulative_distance_nmi'].iloc[-1], 4),
+                        "Reserve Fuel (Kg)": round(Reserve_fuel, 4),
+                        "Trip Fuel (Kg)": round(Trip_fuel, 4),
+                        "Payload (Kg)": round(Payload_weight,4),
+                        "Fuel_burnt (FF)": round(fuel_burn,4),
+                        "Forecast CO2 (Kg)": round(CO2,4),
+                        "Forecast H2O (kg)": round(H2O,4),
+                        "Forecast NOX (Kg)": round(NOX,4),
+                        "Forecast CO (Kg)": round(CO,4),
+                        "Forecast HC (Kg)": round(HC,4)
+                        })
 
                     # Add the computed fuel burn to the DataFrame
                     processed_df['fuel_burn'] = fuel_burn
@@ -156,7 +178,11 @@ if plot_fuel_burn:
 
     #pProc.plot_map_fuelburn_waypoint(combined_data)
 
-    pProc.plot_map_fuelburn_total(combined_data)
+    # Create DataFrame from collected emissions data
+    emissions_df = pd.DataFrame(emissions_data)
+    emissions_df.to_csv("Emissions_Summary_PF_0.3.csv", index=False)
+
+    #pProc.plot_map_fuelburn_total(combined_data)
 
 #################
 # Plot the altitude profile on world map
