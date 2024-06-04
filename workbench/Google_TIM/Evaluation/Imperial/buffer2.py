@@ -39,7 +39,7 @@ Limit = 20000
 
 
 # Payload factor
-payload_factor = 0.1
+payload_factor = 0.3
 
 # List to hold data for all flights for plotting
 all_flights_data = []
@@ -188,7 +188,7 @@ if plot_fuel_burn:
     # Write emissions in EEA format for Google TIM
     if write_emissions:
         emissions_df = pd.DataFrame(emissions_data)
-        emissions_df.to_csv("Output/Ver_2/No_Wind/Emissions_Summary_PF_0.1.csv", index=False)
+        emissions_df.to_csv("Output/Ver_2/No_Wind/Emissions_Summary_PF_0.3.csv", index=False)
 
     # Set global parameters
     #plt.rcParams['figure.figsize'] = (10, 10)  # width, height in inches

@@ -4,6 +4,61 @@ import numpy as np
 import sys
 from datetime import datetime
 
+def getMaxPayload(MTOW , MFW ,OEW):
+
+    # Max Payload Weight = Max. take off weight - Max fuel weight - empty weight
+    MPW = MTOW - MFW - OEW
+
+    return MPW
+
+def getMaxPayloadBADA(airframe):
+
+    # Return maximum payload (kg) based on BADA OPF files
+    if airframe == 'A319':
+        return 1.70E+04
+    
+    if airframe == 'A320':
+        return 2.15E+04
+    
+    if airframe == 'A321':
+        return 2.17E+04
+    
+    if airframe == 'B737':
+        return 1.69E+04
+    
+    if airframe == 'B738':
+        return 2.03E+04
+    
+    if airframe == 'B739':
+        return 2.30E+04
+    
+    if airframe == 'B752':
+        return 2.13E+04
+    
+    if airframe == 'A332':
+        return 4.74E+04
+    
+    if airframe == 'A333':
+        return 4.79E+04
+    
+    if airframe == 'A343':
+        return 4.70E+04
+    
+    if airframe == 'B77W':
+        return 6.99E+04
+    
+    if airframe == 'B788':
+        return 4.31E+04
+    
+    if airframe == 'B789':
+        return 6.36E+04
+    
+    else:
+        print("ERROR: Airframe not found. Cannot assign payload")
+    
+    
+
+
 def computute_mission_weight(actype, payload_factor, fuel_factor, diagnostics):
 
     # Get aircraft type
@@ -15,11 +70,11 @@ def computute_mission_weight(actype, payload_factor, fuel_factor, diagnostics):
     # Fuel weight breakdown
     Trip_Fuel = MFC * fuel_factor
 
-    # Reserve fuel (assume 20 % of maximum fuel)
-    Reserve_Fuel = MFC * 0.10
+    # Reserve fuel (assume x % of maximum fuel)
+    Reserve_Fuel = MFC * 0.05
 
     # Compute the fuel weight (Max. Fuel Mass)
-    MFW = MFC * 0.80   # Jet A density 0.8 kg/liter
+    MFW = MFC * 0.804   # Jet A density 0.8 kg/liter
     
     # Get mass design limits
     MTOW = ac1['limits']['MTOW']  # Kg
@@ -30,17 +85,16 @@ def computute_mission_weight(actype, payload_factor, fuel_factor, diagnostics):
     # Get mass design limits
     MLW = ac1['limits']['MLW']  # Kg
 
-    # Max Payload Weight = Max. take off weight - Max fuel weight - empty weight
-    MPW = MTOW - MFW - OEW
-
+    MPW = getMaxPayload(MTOW , MFW ,OEW)
+   
     # Eval mission weight = operating empty weight + payload weight*factor + fuel weight
     MW = OEW + (MPW * payload_factor) + Trip_Fuel + Reserve_Fuel
 
     if diagnostics:
         print("MTOW:", MTOW)
         print("OEW:", OEW)
-        print("MFW:", MFW)
-        print("MPW:", MPW)
+        print("Fuel weight:", Trip_Fuel + Reserve_Fuel)
+        print("Payload weight:", MPW * payload_factor)
   
     return MW, MTOW, MLW, OEW, Trip_Fuel, Reserve_Fuel, MPW * payload_factor
 
@@ -68,7 +122,7 @@ def compute_emissions(trajectory, actype, payload_factor, fuel_factor, debug):
 
     mass = Mass_ini
 
-    if mass > MTOW:
+    if mass > (1.25*MTOW):
         print("Mission weight is greater than MTOW!")
         print("Design MTOW: ", MTOW)
         print("Mission weight: ", mass)
@@ -276,8 +330,8 @@ def getfuelBurn(actype, payload_factor, trajectory,MTOW, MFC, MLW, OEW, fuel_fac
     # Fuel weight breakdown
     Trip_Fuel = MFC * fuel_factor
 
-    # Reserve fuel (assume 20 % of maximum fuel capacity)
-    Reserve_Fuel = MFC * 0.20
+    # Reserve fuel (assume 5 % of maximum fuel capacity)
+    Reserve_Fuel = MFC * 0.05
 
     # Eval mission weight = operating empty weight + payload weight_factor + fuel weight
     Mass_ini = OEW + Payload_weight + Trip_Fuel + Reserve_Fuel
@@ -291,6 +345,7 @@ def getfuelBurn(actype, payload_factor, trajectory,MTOW, MFC, MLW, OEW, fuel_fac
         print("Design MTOW: ", MTOW)
         print("Mission weight: ", mass)
         computute_mission_weight(actype, payload_factor, fuel_factor, True)
+
         raise ValueError("Mission weight is greater than MTOW!")
     
     if Trip_Fuel == 0:
@@ -321,8 +376,18 @@ def getfuelBurn(actype, payload_factor, trajectory,MTOW, MFC, MLW, OEW, fuel_fac
             print(f"Skipping index {i} due to missing data.")
             continue
 
-        fuelflow = ff.enroute(mass, tas, alt, pa)
+        # If in LTO mode, use takeoff fuelflow setting
+        if ((alt < 3000) and (pa > 0.001)):
+            fuelflow = ff.takeoff(tas, alt, throttle = 1)
 
+        if (alt > 3000):
+            fuelflow = ff.enroute(mass, tas, alt, pa)
+
+        # If in LTO mode, use takeoff fuelflow setting
+        if ((alt < 3000) and (pa < 0.001)):
+            #fuelflow = ff.takeoff(tas, alt, throttle = 0.25)
+            fuelflow = ff.enroute(mass, tas, alt, pa)
+    
         # Here fuelflow is change in mass (fuel burn) over a segment (Kg/s over segment)
         mass -= fuelflow * dt
 
@@ -365,7 +430,7 @@ def getfuelBurn(actype, payload_factor, trajectory,MTOW, MFC, MLW, OEW, fuel_fac
     print("Fuel burn:", fuelBurn)
     print("---------------------------------------------------------------------")
 
-    return fuelBurn, CO2, H2O, NOX, CO, HC, Reserve_Fuel, Trip_Fuel, Payload_weight
+    return fuelBurn, CO2, H2O, NOX, CO, HC, Reserve_Fuel, Trip_Fuel, Payload_weight, fuel_consumption_array, CO2_emissions_array, H2O_emissions_array, Nox_emissions_array
 
 
 def compute_emissions_beta(trajectory, actype, payload_factor, debug):
@@ -374,6 +439,7 @@ def compute_emissions_beta(trajectory, actype, payload_factor, debug):
 
      # Get aircraft type
     ac1 = prop.aircraft(actype)
+
 
     # Get the maximum fuel capacity (liters)
     MFC = ac1['limits']['MFC']
@@ -390,24 +456,24 @@ def compute_emissions_beta(trajectory, actype, payload_factor, debug):
     # Get mass design limits
     MLW = ac1['limits']['MLW']  # Kg
 
-    # Max Payload Weight = Max. take off weight - Max fuel weight - empty weight
-    MPW = MTOW - MFW - OEW
+    # Get the maximum payload weight (kg) from BADA OPF
+    MPW = getMaxPayloadBADA(actype)
 
     # Payload weight is some fraction of total payload capacity
     Payload_weight = MPW * payload_factor
 
     # Set initial fuel_factor/ fraction
-    fuel_factor = 0.01
+    fuel_factor = 0.1
 
-    max_tries = 50  # Maximum number of tries including the initial attempt
-    increment = 0.02
+    max_tries = 100  # Maximum number of tries including the initial attempt
+    increment = 0.01
 
 
     for attempt in range(max_tries):
         try:
             #print(f"Attempt {attempt + 1} with fuel factor {fuel_factor:.2f}")
-            fuel_burn, CO2, H2O, NOX, CO, HC, Reserve_fuel, Trip_fuel, Pyload_weight  =  getfuelBurn(actype, payload_factor, trajectory, MTOW, MFC, MLW, OEW, fuel_factor, Payload_weight, debug)
-            return fuel_burn, CO2, H2O, NOX, CO, HC, Reserve_fuel, Trip_fuel, Pyload_weight
+            fuel_burn, CO2, H2O, NOX, CO, HC, Reserve_fuel, Trip_fuel, Pyload_weight, fuel_consumption_array, CO2_emissions_array, H2O_emissions_array, Nox_emissions_array  =  getfuelBurn(actype, payload_factor, trajectory, MTOW, MFC, MLW, OEW, fuel_factor, Payload_weight, debug)
+            return fuel_burn, CO2, H2O, NOX, CO, HC, Reserve_fuel, Trip_fuel, Pyload_weight, fuel_consumption_array, CO2_emissions_array, H2O_emissions_array, Nox_emissions_array
         except ValueError as e:
             #print(f"Attempt {attempt + 1} with fuel factor {fuel_factor:.2f}: {e}")
             fuel_factor += increment  # Increase the fuel factor for the next attempt

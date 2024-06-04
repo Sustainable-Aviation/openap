@@ -375,21 +375,24 @@ def plot_aircraft_class_donut(df_sum):
     plt.show()
 
 
-def plot_map_fuelburn_total(matching_rows):
+def plot_map_fuelburn_waypoint(matching_rows):
     # Assuming matching_rows is a DataFrame
     if not isinstance(matching_rows, pd.DataFrame):
         raise ValueError("matching_rows must be a pandas DataFrame.")
 
-    fig = plt.figure(figsize=(20, 10))
-    ax = fig.add_subplot(1, 1, 1, projection=ccrs.Robinson())
+    #fig = plt.figure(figsize=(20, 10))
+    #ax = fig.add_subplot(1, 1, 1, projection=ccrs.Robinson())
 
-    ax.add_feature(cfeature.COASTLINE)
-    ax.add_feature(cfeature.BORDERS, linestyle=':')
-    ax.set_global()
+    #ax.add_feature(cfeature.COASTLINE)
+    #ax.add_feature(cfeature.BORDERS, linestyle=':')
+    #ax.set_global()
 
     # Remove bounding box/spines
-    for spine in ax.spines.values():
-        spine.set_visible(False)
+    #for spine in ax.spines.values():
+    #    spine.set_visible(False)
+
+    fig, ax = create_standard_map()
+
 
     # Ensure columns exist
     if not {'latitude', 'longitude', 'fuel_burn'}.issubset(matching_rows.columns):
@@ -398,10 +401,11 @@ def plot_map_fuelburn_total(matching_rows):
     # Extracting the necessary columns
     latitude = matching_rows['latitude']
     longitude = matching_rows['longitude']
-    fuel_burn = matching_rows['fuel_burn'] 
+    fuel_burn = matching_rows['fuel_burn']
 
     # Normalize the fuel burn values for coloring
-    norm = Normalize(vmin=fuel_burn.min(), vmax=fuel_burn.max())
+    #norm = Normalize(vmin=fuel_burn.min(), vmax=200)
+    norm = Normalize(vmin=0, vmax=200)
     cmap = plt.cm.viridis  # Color map
 
     # Scatter plot for latitude and longitude data, color-coded by fuel burn
@@ -415,11 +419,159 @@ def plot_map_fuelburn_total(matching_rows):
     for label in cbar.ax.get_yticklabels():
         label.set_family("Times New Roman")
 
-    plt.rcParams['figure.dpi'] = 300
-    plt.rcParams['savefig.dpi'] = 300
-    plt.savefig('Output/Plots/Map_Fuel_burn.png')
+    #plt.rcParams['figure.dpi'] = 300
+    #plt.rcParams['savefig.dpi'] = 300
+    plt.savefig('Output/Plots/Map_Fuel_burn_Waypoint.png')
 
-    plt.show()
+    #plt.show()
+
+def plot_map_H2O_waypoint(matching_rows):
+    # Assuming matching_rows is a DataFrame
+    if not isinstance(matching_rows, pd.DataFrame):
+        raise ValueError("matching_rows must be a pandas DataFrame.")
+
+    fig, ax = create_standard_map()
+
+    #fig1 = plt.figure(figsize=(20, 10))
+    #ax1 = fig1.add_subplot(1, 1, 1, projection=ccrs.Robinson())
+
+    #ax.add_feature(cfeature.COASTLINE)
+    #ax.add_feature(cfeature.BORDERS, linestyle=':')
+    #ax.set_global()
+
+    # Remove bounding box/spines
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+
+    # Ensure columns exist
+    if not {'latitude', 'longitude', 'fuel_burn'}.issubset(matching_rows.columns):
+        raise ValueError("DataFrame must contain 'latitude', 'longitude', and 'fuel_burn' columns.")
+
+    # Extracting the necessary columns
+    latitude = matching_rows['latitude']
+    longitude = matching_rows['longitude']
+    H2O = matching_rows['H2O']
+
+    # Normalize the fuel burn values for coloring
+    #norm = Normalize(vmin=H2O.min(), vmax=H2O.max())
+    norm = Normalize(vmin=0, vmax=4000)
+    cmap = plt.cm.Blues  # Color map
+
+    # Scatter plot for latitude and longitude data, color-coded by fuel burn
+    sc = ax.scatter(longitude, latitude, c=H2O, cmap=cmap, norm=norm, transform=ccrs.Geodetic(), marker='o', s=1)
+
+    cbar = plt.colorbar(sc, ax=ax, orientation='vertical', fraction=0.02, pad=0.02)
+    cbar.set_label('Water vapour (Kg)', fontsize=20, fontname="Times New Roman")
+
+    # Customize colorbar tick labels
+    cbar.ax.tick_params(labelsize=18)  # Set font size of the colorbar tick labels
+    for label in cbar.ax.get_yticklabels():
+        label.set_family("Times New Roman")
+
+    #plt.rcParams['figure.dpi'] = 300
+    #plt.rcParams['savefig.dpi'] = 300
+    plt.savefig('Output/Plots/Map_H2O_Waypoint.png', dpi = 300)
+
+    #plt.show()
+
+def plot_map_CO2_waypoint(matching_rows):
+    # Assuming matching_rows is a DataFrame
+    if not isinstance(matching_rows, pd.DataFrame):
+        raise ValueError("matching_rows must be a pandas DataFrame.")
+
+    fig, ax = create_standard_map()
+
+    #fig1 = plt.figure(figsize=(20, 10))
+    #ax1 = fig1.add_subplot(1, 1, 1, projection=ccrs.Robinson())
+
+    #ax.add_feature(cfeature.COASTLINE)
+    #ax.add_feature(cfeature.BORDERS, linestyle=':')
+    #ax.set_global()
+
+    # Remove bounding box/spines
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+
+    # Ensure columns exist
+    if not {'latitude', 'longitude', 'fuel_burn'}.issubset(matching_rows.columns):
+        raise ValueError("DataFrame must contain 'latitude', 'longitude', and 'fuel_burn' columns.")
+
+    # Extracting the necessary columns
+    latitude = matching_rows['latitude']
+    longitude = matching_rows['longitude']
+    CO2 = matching_rows['CO2']
+
+    # Normalize the fuel burn values for coloring
+    norm = Normalize(vmin=2000, vmax=8000)
+    #norm = Normalize(vmin=CO2.min(), vmax=CO2.max())
+    cmap = plt.cm.coolwarm  # Color map
+
+    # Scatter plot for latitude and longitude data, color-coded by fuel burn
+    sc = ax.scatter(longitude, latitude, c=CO2, cmap=cmap, norm=norm, transform=ccrs.Geodetic(), marker='o', s=1)
+
+    cbar = plt.colorbar(sc, ax=ax, orientation='vertical', fraction=0.02, pad=0.02)
+    cbar.set_label(r'$CO_2$ (Kg)', fontsize=20, fontname="Times New Roman")
+
+    # Customize colorbar tick labels
+    cbar.ax.tick_params(labelsize=18)  # Set font size of the colorbar tick labels
+    for label in cbar.ax.get_yticklabels():
+        label.set_family("Times New Roman")
+
+    #plt.rcParams['figure.dpi'] = 300
+    #plt.rcParams['savefig.dpi'] = 300
+    plt.savefig('Output/Plots/Map_CO2_Waypoint.png', dpi = 300)
+
+    #plt.show()
+
+def plot_map_NOX_waypoint(matching_rows):
+    # Assuming matching_rows is a DataFrame
+    if not isinstance(matching_rows, pd.DataFrame):
+        raise ValueError("matching_rows must be a pandas DataFrame.")
+
+    fig, ax = create_standard_map()
+
+    #fig1 = plt.figure(figsize=(20, 10))
+    #ax1 = fig1.add_subplot(1, 1, 1, projection=ccrs.Robinson())
+
+    #ax.add_feature(cfeature.COASTLINE)
+    #ax.add_feature(cfeature.BORDERS, linestyle=':')
+    #ax.set_global()
+
+    # Remove bounding box/spines
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+
+    # Ensure columns exist
+    if not {'latitude', 'longitude', 'fuel_burn'}.issubset(matching_rows.columns):
+        raise ValueError("DataFrame must contain 'latitude', 'longitude', and 'fuel_burn' columns.")
+
+    # Extracting the necessary columns
+    latitude = matching_rows['latitude']
+    longitude = matching_rows['longitude']
+    CO2 = matching_rows['NOx']
+
+    # Normalize the fuel burn values for coloring
+    norm = Normalize(vmin=0, vmax=50)
+    #norm = Normalize(vmin=CO2.min(), vmax=CO2.max())
+    cmap = plt.cm.inferno  # Color map
+
+    # Scatter plot for latitude and longitude data, color-coded by fuel burn
+    sc = ax.scatter(longitude, latitude, c=CO2, cmap=cmap, norm=norm, transform=ccrs.Geodetic(), marker='o', s=1)
+
+    cbar = plt.colorbar(sc, ax=ax, orientation='vertical', fraction=0.02, pad=0.02)
+    cbar.set_label(r'$NO_x$ (Kg)', fontsize=20, fontname="Times New Roman")
+
+    # Customize colorbar tick labels
+    cbar.ax.tick_params(labelsize=18)  # Set font size of the colorbar tick labels
+    for label in cbar.ax.get_yticklabels():
+        label.set_family("Times New Roman")
+
+    #plt.rcParams['figure.dpi'] = 300
+    #plt.rcParams['savefig.dpi'] = 300
+    plt.savefig('Output/Plots/Map_NOX_Waypoint.png', dpi = 300)
+
+    #plt.show()
+
 
 def plot_map_groundTrack_total(df_sum):
     # Assuming matching_rows is a DataFrame
@@ -466,4 +618,82 @@ def plot_map_groundTrack_total(df_sum):
     plt.rcParams['savefig.dpi'] = 300
     plt.savefig('Output/Plots/Map_Track_Distance.png')
 
+    plt.show()
+
+
+def create_standard_map():
+    fig = plt.figure(figsize=(20, 10), dpi=300)
+    ax = fig.add_subplot(1, 1, 1, projection=ccrs.Robinson())
+    ax.add_feature(cfeature.COASTLINE, alpha = 0.3)
+    ax.add_feature(cfeature.BORDERS, linestyle=':', alpha = 0.1)
+    #ax.set_global()
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+    return fig, ax
+
+
+
+def plot_FB_Payload_Distance(filtered_data):
+    # List of markers for diversity in plotting points
+    markers = ['o', 's', '^', 'D', 'P', 'p', 'P']
+
+    # Labels corresponding to each data set
+    dataset_labels = [r"$\tau$: 0.1", r"$\tau$: 0.3", r"$\tau$: 0.5", r"$\tau$: 0.7", r"$\tau$: 0.9"]
+
+    # Start plotting
+    fig1 = plt.figure()
+    ax1 = fig1.gca()
+
+    # Collect unique payload values for marker assignment
+    unique_payloads = set()
+    for data in filtered_data:
+        unique_payloads.update(data['Payload (Kg)'].unique())
+    payload_marker_map = {payload: markers[i % len(markers)] for i, payload in enumerate(sorted(unique_payloads))}
+    
+    # Variable to store scatter plots for creating colorbar
+    scatter_plots = []
+
+    # Iterate through each dataset to plot
+    for i, data in enumerate(filtered_data):
+        if not data.empty:
+            # Use assigned marker for each unique payload
+            for payload, marker in payload_marker_map.items():
+                subset = data[data['Payload (Kg)'] == payload]
+                if not subset.empty:
+                    # Use dataset labels for legend
+                    norm = Normalize(vmin=subset['Fuel_burnt (FF)'].min(), vmax=subset['Fuel_burnt (FF)'].max())
+                    label = f"{dataset_labels[i]}"
+                    scatter = ax1.scatter(subset['Total distance (nm) (FF)'], subset['Payload (Kg)'],
+                                          c=subset['Fuel_burnt (FF)'], cmap='viridis', norm = norm, marker=marker,
+                                          label=label, alpha=1, s=50)
+                    scatter_plots.append(scatter)
+
+    # Enhance plot aesthetics
+    plt.xlabel('Total Distance (nm)', fontname="Times New Roman", fontsize=20)
+    plt.ylabel('Payload (Kg)', fontname="Times New Roman", fontsize=20)
+    ax1.spines['top'].set_linewidth(1.5)
+    ax1.spines['bottom'].set_linewidth(1.5)
+    ax1.spines['left'].set_linewidth(1.5)
+    ax1.spines['right'].set_linewidth(1.5)
+    plt.xticks(fontname="Times New Roman", fontsize=20)
+    plt.yticks(fontname="Times New Roman", fontsize=20)
+    plt.rcParams['figure.dpi'] = 300
+    plt.rcParams['savefig.dpi'] = 300
+
+    # Adjust figure size
+    F = plt.gcf()
+    Size = F.get_size_inches()
+    F.set_size_inches(Size[0]*1.7, Size[1]*1.5, forward=True)
+
+    # Create a colorbar using the last scatter plot
+    cbar = plt.colorbar(scatter_plots[-1], ax=ax1)
+    cbar.set_label('Fuel burn (Kg)', fontsize=20, fontname="Times New Roman")
+
+    # Customize colorbar tick labels
+    cbar.ax.tick_params(labelsize=18)  # Set font size of the colorbar tick labels
+    for label in cbar.ax.get_yticklabels():
+        label.set_family("Times New Roman")
+
+    # Save and show the figure
+    plt.savefig('Output/Plots/FB_v_Dist_Payld_B738.png', dpi=300)
     plt.show()
