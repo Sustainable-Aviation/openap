@@ -350,6 +350,9 @@ def getfuelBurn(actype, payload_factor, trajectory,MTOW, MFC, MLW, OEW, fuel_fac
     
     if Trip_Fuel == 0:
         raise ValueError("Trip fuel is zero, cannot start mission on reserves")
+    
+    if Trip_Fuel > MFC:
+        raise ValueError("Required trip fuel is greater than maximum fuel capacity")
 
     # Compute path angles from trajectory
     path_angles = trajectory.path_angle_radians
