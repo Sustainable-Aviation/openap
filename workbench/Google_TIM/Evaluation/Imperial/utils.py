@@ -99,107 +99,6 @@ def computute_mission_weight(actype, payload_factor, fuel_factor, diagnostics):
     return MW, MTOW, MLW, OEW, Trip_Fuel, Reserve_Fuel, MPW * payload_factor
 
 
-
-
-def compute_emissions(trajectory, actype, payload_factor, fuel_factor, debug):
-
-    # Define fuel flow object with default engine (TODO add specifici with Cirium)
-    ff = FuelFlow(actype)
-    emission = Emission(actype)
-    
-    # Get the mission weight (Mass) (fuel + payload + OEW)
-    Mass_ini, MTOW, MLW, OEW, Trip_Fuel, Reserve_Fuel, Payload_weight = computute_mission_weight(actype, payload_factor, fuel_factor, False)
-
-    path_angles = trajectory.path_angle_radians
-    
-    # Time spent over each segment (in-between waypoints)
-    time_deltas = trajectory.elapsed_time_seconds
-
-    # Mission mass cannot be less than operational empty weight - 
-    if Trip_Fuel  == 0:
-        print("Trip fuel weight cannot be zero")
-        sys.exit()
-
-    mass = Mass_ini
-
-    if mass > (1.25*MTOW):
-        print("Mission weight is greater than MTOW!")
-        print("Design MTOW: ", MTOW)
-        print("Mission weight: ", mass)
-        computute_mission_weight(actype, payload_factor, fuel_factor, True)
-        sys.exit()
-
-    # Determine the number of segments
-    n = len(time_deltas)
-
-    # Initialize an array of zeros with size n to store fuelflow*dt values
-    fuel_consumption_array = np.zeros(n)
-
-    # Initialize emissions array
-    CO2_emissions_array = np.zeros(n)
-    H2O_emissions_array = np.zeros(n)
-    Nox_emissions_array = np.zeros(n)
-    CO_emissions_array = np.zeros(n)
-    HC_emissions_array = np.zeros(n)
-
-
-
-    for i, (dt, tas, alt, pa) in enumerate(zip(time_deltas, trajectory.true_airspeed_knots, trajectory.altitude_ft, path_angles)):
-        if None in (dt, tas, alt, pa):
-            print(f"Skipping index {i} due to missing data.")
-            continue
-        fuelflow = ff.enroute(mass, tas, alt, pa)
-        # Here fuelflow is change in mass (fuel burn) over a segment (Kg/s over segment)
-        mass -= fuelflow * dt
-
-        if mass < (OEW + Payload_weight + Reserve_Fuel):
-            print("Current mission weight is less than  OEW + Payload + Reserve_Fuel")
-            print("Not enough fuel to complete mission under normal conditions")
-            print("Available mission fuel weight: ", Trip_Fuel)
-            sys.exit()
-
-        if debug:
-            # Exit if fuel burn invalid 
-            if pd.isna(fuelflow * dt):
-                print("Fuel burn calculation resulted in NAN, stopping execution")
-                print("Aircraft: ", actype)
-                print("Current dt:", dt)
-                print("Current fuelflow:", fuelflow)
-                print("Current mass:", mass)
-                print("Current TAS:", tas)
-                print("Current PA:", pa)
-                print("Current alt:", alt)
-                raise ValueError("Fuel burn is NaN")
-
-        # Store the product of fuelflow and dt directly in the preallocated array
-        fuel_consumption_array[i] = fuelflow * dt
-
-        # Compute emissions
-        CO2_emissions_array[i] = emission.co2(fuelflow)
-        H2O_emissions_array[i] = emission.h2o(fuelflow)
-        Nox_emissions_array[i] = emission.nox(fuelflow)
-        CO_emissions_array[i] = emission.co(fuelflow)
-        HC_emissions_array[i] = HC = emission.hc(fuelflow)
-        
-    # Compute total fuel burn over entire mission
-    fuelburn = Mass_ini - mass
-    # Ensure that the final mass is less than or equal to design MLW
-    if (mass > MLW):
-        print("ERROR: Final mass exceeds maximum design landing weight")
-        print("Final mission mass: ", mass)
-        print("Max. landing weight: ", MLW)
-        print("Initial fuel weight:", )
-        print("Fuel burn: ", fuelburn)
-
-        sys.exit()
-
-    
-
-    print("Fuel burn: ", fuelburn)
-
-    return fuel_consumption_array
-
-
 def fallback(airframe):
     if airframe == "E195":
         print("E195 not supported, selecting B737 as fallback airframe \n")
@@ -321,7 +220,7 @@ def processFlightdata(matching_rows):
 
 def getfuelBurn(actype, payload_factor, trajectory,MTOW, MFC, MLW, OEW, fuel_factor, Payload_weight, debug):
 
-    # Define fuel flow object with default engine (TODO add specific engine with Cirium)
+   
     ff = FuelFlow(actype)
 
     # Define emissions object
@@ -436,11 +335,132 @@ def getfuelBurn(actype, payload_factor, trajectory,MTOW, MFC, MLW, OEW, fuel_fac
     return fuelBurn, CO2, H2O, NOX, CO, HC, Reserve_Fuel, Trip_Fuel, Payload_weight, fuel_consumption_array, CO2_emissions_array, H2O_emissions_array, Nox_emissions_array
 
 
+def getfuelBurn_specific_Airframe(actype, payload_factor, trajectory,MTOW, MFC, MLW, OEW, fuel_factor, Payload_weight, debug):
+
+    # For now, target A319 only and switch engine to CFM56-5B5
+    if actype =="A320":
+        print("Setting user-defined engine for A320")
+        ff = FuelFlow(actype, eng = 'CFM56-5-A1')
+
+    else: # Use the most common engine configuration
+        ff = FuelFlow(actype)
+
+    # Define emissions object
+    emission = Emission(actype)
+
+    # Fuel weight breakdown
+    Trip_Fuel = MFC * fuel_factor
+
+    # Reserve fuel (assume 5 % of maximum fuel capacity)
+    Reserve_Fuel = MFC * 0.05
+
+    # Eval mission weight = operating empty weight + payload weight_factor + fuel weight
+    Mass_ini = OEW + Payload_weight + Trip_Fuel + Reserve_Fuel
+
+    # Initial mass
+    mass = Mass_ini
+
+    # Mission weight cannot be greater than MTOW
+    if mass > MTOW:
+        print("Mission weight is greater than MTOW!")
+        print("Design MTOW: ", MTOW)
+        print("Mission weight: ", mass)
+        computute_mission_weight(actype, payload_factor, fuel_factor, True)
+        raise ValueError("Mission weight is greater than MTOW!")
+    
+    if Trip_Fuel == 0:
+        raise ValueError("Trip fuel is zero, cannot start mission on reserves")
+    
+    if Trip_Fuel > MFC:
+        raise ValueError("Required trip fuel is greater than maximum fuel capacity")
+
+    # Compute path angles from trajectory
+    path_angles = trajectory.path_angle_radians
+
+    # Time spent over each segment (in-between waypoints)
+    time_deltas = trajectory.elapsed_time_seconds
+
+    # Determine the number of segments
+    n = len(time_deltas)
+
+    # Initialize a NumPy array of zeros with size n to store fuelflow*dt values
+    fuel_consumption_array = np.zeros(n)
+
+    # Initialize emissions array
+    CO2_emissions_array = np.zeros(n)
+    H2O_emissions_array = np.zeros(n)
+    Nox_emissions_array = np.zeros(n)
+    CO_emissions_array = np.zeros(n)
+    HC_emissions_array = np.zeros(n)
+
+    print("Computing....")
+    for i, (dt, tas, alt, pa) in enumerate(zip(time_deltas, trajectory.true_airspeed_knots, trajectory.altitude_ft, path_angles)):
+            
+        if None in (dt, tas, alt, pa):
+            print(f"Skipping index {i} due to missing data.")
+            continue
+
+        # If in LTO mode, use takeoff fuelflow setting
+        if ((alt < 3000) and (pa > 0.001)):
+            fuelflow = ff.takeoff(tas, alt, throttle = 1)
+
+        if (alt > 3000):
+            fuelflow = ff.enroute(mass, tas, alt, pa)
+
+        # If in LTO mode, use takeoff fuelflow setting
+        if ((alt < 3000) and (pa < 0.001)):
+            #fuelflow = ff.takeoff(tas, alt, throttle = 0.25)
+            fuelflow = ff.enroute(mass, tas, alt, pa)
+    
+        # Here fuelflow is change in mass (fuel burn) over a segment (Kg/s over segment)
+        mass -= fuelflow * dt
+
+        if mass < (OEW + Payload_weight + Reserve_Fuel):
+            #print("Current mission weight: ", mass)
+            #print("Current Fuel weight: ", (OEW + Payload_weight + Reserve_Fuel)-mass )
+            #print("Trip fuel weight: ", Trip_Fuel)
+            raise ValueError("Not enough trip fuel to complete the mission")
+
+        if debug:
+            if pd.isna(fuelflow * dt):
+                raise ValueError("Fuel burn calculation resulted in NaN")
+
+        # If all checks passed, append the fuel_consumption array     
+        fuel_consumption_array[i] = fuelflow * dt
+
+        # Compute emissions
+        CO2_emissions_array[i] = emission.co2(fuelflow)
+        H2O_emissions_array[i] = emission.h2o(fuelflow)
+        Nox_emissions_array[i] = emission.nox(fuelflow, tas, alt)
+        CO_emissions_array[i] = emission.co(fuelflow, tas, alt)
+        HC_emissions_array[i] =  emission.hc(fuelflow, tas, alt)
+
+    # Fuel burn Caclulation ends
+
+    # Check if the final mass does not exceed maximum landing weight
+    if mass > MLW:
+        raise ValueError("Final mass exceeds maximum design landing weight")
+
+    # Total fuel burn
+    fuelBurn = Mass_ini - mass
+
+    # Total Emissions
+    CO2 = np.sum(CO2_emissions_array)
+    H2O = np.sum(H2O_emissions_array)
+    NOX = np.sum(Nox_emissions_array)
+    CO = np.sum(CO_emissions_array)
+    HC = np.sum(HC_emissions_array)
+
+    print("Fuel burn:", fuelBurn)
+    print("---------------------------------------------------------------------")
+
+    return fuelBurn, CO2, H2O, NOX, CO, HC, Reserve_Fuel, Trip_Fuel, Payload_weight, fuel_consumption_array, CO2_emissions_array, H2O_emissions_array, Nox_emissions_array
+
 def compute_emissions_beta(trajectory, actype, payload_factor, debug):
     # Define fuel flow object with default engine (TODO add specifici with Cirium)
     ff = FuelFlow(actype)
 
-     # Get aircraft type
+    # Get aircraft type
     ac1 = prop.aircraft(actype)
 
 
@@ -475,7 +495,7 @@ def compute_emissions_beta(trajectory, actype, payload_factor, debug):
     for attempt in range(max_tries):
         try:
             #print(f"Attempt {attempt + 1} with fuel factor {fuel_factor:.2f}")
-            fuel_burn, CO2, H2O, NOX, CO, HC, Reserve_fuel, Trip_fuel, Pyload_weight, fuel_consumption_array, CO2_emissions_array, H2O_emissions_array, Nox_emissions_array  =  getfuelBurn(actype, payload_factor, trajectory, MTOW, MFC, MLW, OEW, fuel_factor, Payload_weight, debug)
+            fuel_burn, CO2, H2O, NOX, CO, HC, Reserve_fuel, Trip_fuel, Pyload_weight, fuel_consumption_array, CO2_emissions_array, H2O_emissions_array, Nox_emissions_array  =  getfuelBurn_specific_Airframe(actype, payload_factor, trajectory, MTOW, MFC, MLW, OEW, fuel_factor, Payload_weight, debug)
             return fuel_burn, CO2, H2O, NOX, CO, HC, Reserve_fuel, Trip_fuel, Pyload_weight, fuel_consumption_array, CO2_emissions_array, H2O_emissions_array, Nox_emissions_array
         except ValueError as e:
             #print(f"Attempt {attempt + 1} with fuel factor {fuel_factor:.2f}: {e}")

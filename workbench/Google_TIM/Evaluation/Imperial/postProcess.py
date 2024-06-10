@@ -321,9 +321,9 @@ def plot_distance_bin_class(df_sum):
     plt.hist(df_narrow['total_distance_nm'], bins=30, alpha=0.7, label='Narrow Body', edgecolor='black', color = 'C0')
     plt.hist(df_wide['total_distance_nm'], bins=30, alpha=0.7, label='Wide Body', edgecolor='black', color = "C2")
 
-    plt.xlabel('Ground track distance (nmi)', fontname="Times New Roman", fontsize=20)
+    plt.xlabel('Distance bin(nmi)', fontname="Times New Roman", fontsize=20)
     plt.ylabel('Frequency', fontname="Times New Roman", fontsize=20)
-    plt.legend()
+    plt.legend(loc='upper left', bbox_to_anchor=(0, 1), ncol=2, prop={'family': 'Times New Roman', 'size': 14})
     
     for axis in ['top', 'bottom', 'left', 'right']:
             ax1.spines[axis].set_linewidth(1.5)
@@ -350,11 +350,15 @@ def plot_aircraft_class_donut(df_sum):
 
 
 # Filter data for narrow-body and wide-body
-    df_narrow = df_sum[df_sum['aircraft_type_icao'].isin(narrow_body)]
-    df_wide = df_sum[df_sum['aircraft_type_icao'].isin(wide_body)]
+    #df_narrow = df_sum[df_sum['aircraft_type_icao'].isin(narrow_body)]
+    #df_wide = df_sum[df_sum['aircraft_type_icao'].isin(wide_body)]
+
+    df_wide = df_sum[df_sum['aircraft_type_icao']]
 
     # Create a donut plot for narrow-body aircraft count
     airframe_counts = df_wide['aircraft_type_icao'].value_counts()
+
+   
 
     fig1 = plt.figure()
     ax1 = fig1.gca()

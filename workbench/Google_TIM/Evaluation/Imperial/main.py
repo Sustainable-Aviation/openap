@@ -35,11 +35,11 @@ Target_id = "190114-72410-AFL106"
 excluded_flight_ids = ["190110-93704-ARG1844", "190114-77651-CES201",  "190111-69033-GCR7939", "190113-51219-CRL953", "190107-99735-ARG1141", "190115-24252-AEA023", "190112-45597-QFA107", "190114-72410-AFL106"]
 
 debug = False
-Limit = 20000
+Limit = 199
 
 
 # Payload factor
-payload_factor = 0.1
+payload_factor = 0.70
 
 # List to hold data for all flights for plotting
 all_flights_data = []
@@ -98,8 +98,8 @@ if plot_fuel_burn:
 
                 airframe = flight_data['aircraft_type_icao'].iloc[0]
 
-                if airframe == 'A332':
-                    continue  # Something is wrong with A332, skip for now.
+                #if airframe == 'A332':
+                #    continue  # Something is wrong with A332, skip for now.
 
                 if airframe == 'A359':
                     continue  # Kinematic model not available
@@ -188,18 +188,18 @@ if plot_fuel_burn:
     # Write emissions in EEA format for Google TIM
     if write_emissions:
         emissions_df = pd.DataFrame(emissions_data)
-        emissions_df.to_csv("Output/Ver_2/No_Wind/Emissions_Summary_PF_0.1.csv", index=False)
+        emissions_df.to_csv("Output/Ver_2/No_Wind/A320/A320-111/Emissions_Summary_PF_0.7.csv", index=False)
 
     # Set global parameters
     #plt.rcParams['figure.figsize'] = (10, 10)  # width, height in inches
     #plt.rcParams['figure.dpi'] = 300
     #plt.rcParams['savefig.dpi'] = 300
 
-    pProc.plot_map_fuelburn_waypoint(combined_data)
+    #pProc.plot_map_fuelburn_waypoint(combined_data)
 
-    pProc.plot_map_H2O_waypoint(combined_data)
+    #pProc.plot_map_H2O_waypoint(combined_data)
 
-    pProc.plot_map_CO2_waypoint(combined_data)
+    #pProc.plot_map_CO2_waypoint(combined_data)
 
 #################
 # Plot the altitude profile on world map
