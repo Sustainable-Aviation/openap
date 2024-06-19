@@ -1,10 +1,10 @@
-from openap import prop, Thrust, Drag, WRAP, FlightPhase
+from openap import prop, Thrust, Drag, WRAP
 from openap.traj import Generator
 import matplotlib.pyplot as plt
 
 # Import Airbus A320 with CFM-56
 
-ac1 = prop.aircraft('A320')
+ac1 = prop.aircraft('B738')
 eng1 = prop.engine('CFM56-5B4')
 
 ac1_name = ac1['aircraft']

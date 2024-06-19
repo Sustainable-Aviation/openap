@@ -2,6 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.interpolate import griddata
+import matplotlib.font_manager as fm
 
 def compute_relative_difference(file1, file2):
     """
@@ -23,6 +24,8 @@ def compute_relative_difference(file1, file2):
         return None
 
     try:
+        df1 = df1[df1['Aircraft IATA code'] == 'A319']
+        df2 = df2[df2['Aircraft IATA code'] == 'A319']
         # Ensure the data is aligned
         df1 = df1.sort_values(by=['Total distance (nm) (FF)', 'Payload (Kg)'])
         df2 = df2.sort_values(by=['Total distance (nm) (FF)', 'Payload (Kg)'])
@@ -48,6 +51,8 @@ def plot_relative_difference_contour(df, contour_limits):
     Parameters:
     df (pd.DataFrame): DataFrame containing the relative difference in fuel burn.
     """
+
+    
     total_distance = df['Total distance (nm) (FF)'].values
     payload = df['Payload (Kg)'].values
     relative_difference = df['Relative difference in fuel burn (%)'].values
@@ -63,9 +68,25 @@ def plot_relative_difference_contour(df, contour_limits):
 
     # Create a filled contour plot
     fig, ax = plt.subplots()
-    contourf = ax.contourf(grid_x, grid_y, grid_z_filled, levels=np.linspace(contour_limits[0], contour_limits[1], 100), cmap='magma')
+    contourf = ax.contourf(grid_x, grid_y, grid_z_filled, levels=np.linspace(contour_limits[0], contour_limits[1], 100), cmap='viridis')
     cbar = plt.colorbar(contourf, ticks=np.linspace(contour_limits[0], contour_limits[1], 10))
+    #contourf = ax.contourf(grid_x, grid_y, grid_z_filled, cmap='seismic')
+    #cbar = plt.colorbar(contourf)
     cbar.set_label('Relative difference in fuel burnt (%)', fontsize=20, fontname="Times New Roman")
+    
+
+    # Add contour lines
+    #contour_lines = ax.contour(grid_x, grid_y, grid_z_filled, levels=np.linspace(contour_limits[0], contour_limits[1], 10), colors='black', linewidths=0.1)
+    contour_lines = ax.contour(grid_x, grid_y, grid_z_filled, levels=np.linspace(contour_limits[0], contour_limits[1], 30), colors='black', linewidths=0.1)
+    # Add contour labels with customized font properties
+    clabels = ax.clabel(contour_lines, fmt='%2.1f', colors='black', fontsize=12, inline=True)
+
+    # Customize font properties for contour labels
+    for label in clabels:
+        label.set_fontname('Times New Roman')
+        label.set_size(12)
+        label.set_weight('bold')
+
 
     # Customize colorbar tick labels
     cbar.ax.tick_params(labelsize=18)  # Set font size of the colorbar tick labels
@@ -101,16 +122,15 @@ def plot_relative_difference_contour(df, contour_limits):
     plt.tight_layout()
 
     # Save the figure (uncomment the following line if you want to save the figure)
-    plt.savefig('A319/Plots/RelDiff/Rel_Dif_FB_CTR_A319_111.png', dpi=300)
+    plt.savefig('A319/Plots/RelDiff/Rel_Dif_FB_CTR_A319_133.png', dpi=300)
 
     plt.show()
 
-
 # Define file paths
-file1 = 'A319/data/A319_115_Emissions_Summary_Combined.csv'   # CFM56-5B7 taken as the baseline
-file2 = 'A319/data/A319_111_Emissions_Summary_Combined.csv'
+file1 = 'A319/data/A319_115_Emissions_Summary_Combined.csv'   # Reference airframe
+file2 = 'A319/data/A319_133_Emissions_Summary_Combined.csv'
 
-contour_limits = (-2.5, 14.5)
+contour_limits = (-2, 14)
 
 # Compute relative difference
 relative_difference_df = compute_relative_difference(file1, file2)

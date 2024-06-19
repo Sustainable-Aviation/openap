@@ -456,12 +456,15 @@ class Generator(object):
         v = aero.mach2tas(mach_cr, h_cr)
         vs = 0
 
+        
         while True:
             data.append([t, h_cr, s, v, vs])
             t = t + dt
             s = s + v * dt
-
-            if s > range:
+            #print("In  ", dt, " seconds, you travelled :", (s/1000), "kilometers meters at a speed of: ", v, " meters per second.")
+            if (s/1000) > range:
+                #print("Current distance:", s/1000)
+                #print("Passing range: ", range)
                 break
 
         data = np.array(data)

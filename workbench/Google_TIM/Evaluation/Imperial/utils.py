@@ -13,6 +13,7 @@ def getMaxPayload(MTOW , MFW ,OEW):
 
 def getMaxPayloadBADA(airframe):
 
+    print("Getting max payload for:", airframe)
     # Return maximum payload (kg) based on BADA OPF files
     if airframe == 'A319':
         return 1.70E+04
@@ -338,9 +339,9 @@ def getfuelBurn(actype, payload_factor, trajectory,MTOW, MFC, MLW, OEW, fuel_fac
 def getfuelBurn_specific_Airframe(actype, payload_factor, trajectory,MTOW, MFC, MLW, OEW, fuel_factor, Payload_weight, debug):
 
     # For now, target A319 only and switch engine to CFM56-5B5
-    if actype =="A320":
-        print("Setting user-defined engine for A320")
-        ff = FuelFlow(actype, eng = 'CFM56-5-A1')
+    if actype =="A319":
+        #print("Setting user-defined engine for A319")
+        ff = FuelFlow(actype, eng = 'V2527M-A5')
 
     else: # Use the most common engine configuration
         ff = FuelFlow(actype)
@@ -393,7 +394,7 @@ def getfuelBurn_specific_Airframe(actype, payload_factor, trajectory,MTOW, MFC, 
     CO_emissions_array = np.zeros(n)
     HC_emissions_array = np.zeros(n)
 
-    print("Computing....")
+    
     for i, (dt, tas, alt, pa) in enumerate(zip(time_deltas, trajectory.true_airspeed_knots, trajectory.altitude_ft, path_angles)):
             
         if None in (dt, tas, alt, pa):

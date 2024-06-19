@@ -98,7 +98,27 @@ class Drag(object):
         cl = L / qS
         cd = cd0 + k * cl ** 2
         D = cd * qS
+        if (cl < 0):
+            print("Warning: your CL < 0")
+            print("Current mass", mass)
+            print("Current V", v)
         return D
+    
+    @ndarrayconvert
+    def _calc_CL_CD(self, mass, tas, alt, cd0, k, path_angle):
+        v = tas * self.aero.kts
+        h = alt * self.aero.ft
+        gamma = path_angle * self.np.pi / 180
+
+        S = self.aircraft["wing"]["area"]
+
+        rho = self.aero.density(h)
+        qS = 0.5 * rho * v ** 2 * S
+        L = mass * self.aero.g0 * self.np.cos(gamma)
+        qS = self.np.where(qS < 1e-3, 1e-3, qS)
+        cl = L / qS
+        cd = cd0 + k * cl ** 2
+        return cl, cd
 
     @ndarrayconvert
     def clean(self, mass, tas, alt, path_angle=0):
@@ -143,7 +163,51 @@ class Drag(object):
 
         D = self._calc_drag(mass, tas, alt, cd0, k, path_angle)
         return D
+    
+    @ndarrayconvert
+    def clean_CL_CD(self, mass, tas, alt, path_angle=0):
+        """Compute drag at clean configuration (considering compressibility).
 
+        Args:
+            mass (int or ndarray): Mass of the aircraft (unit: kg).
+            tas (int or ndarray): True airspeed (unit: kt).
+            alt (int or ndarray): Altitude (unit: ft).
+            path_angle (float or ndarray): Path angle (unit: degree). Defaults to 0.
+
+        Returns:
+            int: Total drag (unit: N).
+
+        """
+
+        cd0 = self.polar["clean"]["cd0"]
+        k = self.polar["clean"]["k"]
+
+        if self.wave_drag:
+            mach = self.aero.tas2mach(tas * self.aero.kts, alt * self.aero.ft)
+            cl = self._cl(mass, tas, alt, path_angle)
+
+            sweep = math.radians(self.aircraft["wing"]["sweep"])
+            tc = self.aircraft["wing"]["t/c"]
+            if tc is None:
+                tc = 0.11
+
+            cos_sweep = math.cos(sweep)
+            mach_crit = (
+                0.87 - 0.108 / cos_sweep - 0.1 * cl / (cos_sweep ** 2) - tc / cos_sweep
+            ) / cos_sweep
+
+            dmach = self.np.where(mach - mach_crit <= 0, 0, mach - mach_crit)
+
+            dCdw = self.np.where(dmach, 20 * dmach ** 4, 0)
+
+        else:
+            dCdw = 0
+
+        cd0 = cd0 + dCdw
+
+        cl, cd = self._calc_CL_CD(mass, tas, alt, cd0, k, path_angle)
+        return cl, cd
+    
     @ndarrayconvert
     def nonclean(self, mass, tas, alt, flap_angle, path_angle=0, landing_gear=False):
         """Compute drag at at non-clean configuration.

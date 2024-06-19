@@ -21,10 +21,15 @@ def concatenate_csv_files(file_paths, output_path):
 
 # Define file paths
 file_paths = [
-    '..//..//..//Output/Ver_2/No_Wind/A319_133/Emissions_Summary_PF_0.1.csv',
-    '..//..//..//Output/Ver_2/No_Wind/A319_133/Emissions_Summary_PF_0.3.csv',
-    '..//..//..//Output/Ver_2/No_Wind/A319_133/Emissions_Summary_PF_0.5.csv',
-    '..//..//..//Output/Ver_2/No_Wind/A319_133/Emissions_Summary_PF_0.7.csv'
+    '..//..//..//Output/Ver_2/No_Wind/A319/A319_133/Emissions_Summary_PF_0.1.csv',
+    '..//..//..//Output/Ver_2/No_Wind/A319/A319_133/Emissions_Summary_PF_0.2.csv',
+    '..//..//..//Output/Ver_2/No_Wind/A319/A319_133/Emissions_Summary_PF_0.3.csv',
+    '..//..//..//Output/Ver_2/No_Wind/A319/A319_133/Emissions_Summary_PF_0.4.csv',
+    '..//..//..//Output/Ver_2/No_Wind/A319/A319_133/Emissions_Summary_PF_0.5.csv',
+    '..//..//..//Output/Ver_2/No_Wind/A319/A319_133/Emissions_Summary_PF_0.6.csv',
+    '..//..//..//Output/Ver_2/No_Wind/A319/A319_133/Emissions_Summary_PF_0.7.csv',
+    '..//..//..//Output/Ver_2/No_Wind/A319/A319_133/Emissions_Summary_PF_0.8.csv',
+    '..//..//..//Output/Ver_2/No_Wind/A319/A319_133/Emissions_Summary_PF_0.9.csv'
 ]
 
 # Define output path

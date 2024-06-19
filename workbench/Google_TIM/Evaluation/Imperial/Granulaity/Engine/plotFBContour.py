@@ -31,12 +31,19 @@ def plot_fuel_burnt_contour(file_paths, contour_limits):
     # Load and concatenate data from all files
     all_data = pd.concat([pd.read_csv(file) for file in file_paths])
 
-    # Extract relevant columns and drop rows with missing values
-    all_data = all_data[['Total distance (nm) (FF)', 'Payload (Kg)', 'Fuel_burnt (FF)']].dropna()
+    # Filter data for specific airframe
+    fltr_data = all_data[all_data['Aircraft IATA code'] == 'A320']
 
-    total_distance = all_data['Total distance (nm) (FF)'].values
-    payload = all_data['Payload (Kg)'].values
-    fuel_burnt = all_data['Fuel_burnt (FF)'].values
+
+
+
+
+    # Extract relevant columns and drop rows with missing values
+    fltr_data = fltr_data[['Total distance (nm) (FF)', 'Payload (Kg)', 'Fuel_burnt (FF)']].dropna()
+
+    total_distance = fltr_data['Total distance (nm) (FF)'].values
+    payload = fltr_data['Payload (Kg)'].values
+    fuel_burnt = fltr_data['Fuel_burnt (FF)'].values
 
     # Create a grid of total_distance and payload values
     grid_x, grid_y = np.mgrid[total_distance.min():total_distance.max():100j, payload.min():payload.max():100j]
@@ -48,6 +55,9 @@ def plot_fuel_burnt_contour(file_paths, contour_limits):
     fig, ax = plt.subplots()
     contourf = ax.contourf(grid_x, grid_y, grid_z, levels=np.linspace(contour_limits[0], contour_limits[1], 100), cmap='magma')
     cbar = plt.colorbar(contourf, ticks=np.linspace(contour_limits[0], contour_limits[1], 10))
+
+    #contourf = ax.contourf(grid_x, grid_y, grid_z, levels=50, cmap='magma')
+    #cbar = plt.colorbar(contourf)
     cbar.set_label('Fuel burnt (kg)', fontsize=20, fontname="Times New Roman")
 
     # Customize colorbar tick labels
@@ -83,7 +93,7 @@ def plot_fuel_burnt_contour(file_paths, contour_limits):
 
     fig.set_size_inches(fig.get_size_inches()[0]*1.5, fig.get_size_inches()[1]*1.5, forward=True)
     plt.tight_layout()
-    plt.savefig('A319/Plots/A319_111.png', dpi=300)  # Save the figure
+    plt.savefig('A320/Plots/Absolute/A320_233_HR.png', dpi=300)  # Save the figure
     plt.show()
 
 
@@ -170,20 +180,20 @@ def plot_fuel_burnt_scatter(file_paths, payload_value):
     fig.set_size_inches(fig.get_size_inches()[0]*1.5, fig.get_size_inches()[1]*1.5, forward=True)
 
     plt.tight_layout()
-    plt.savefig('A319/Plots/Fixed_Payload_Scatter/A319_115_PF_010.png', dpi=300)  # Save the figure
+    plt.savefig('A320/Plots/Fixed_Payload_Scatter/A319_115_PF_010.png', dpi=300)  # Save the figure
     plt.show()
 
 
-Plot_contour = False
-Plot_scatter = True
+Plot_contour = True
+Plot_scatter = False
 
 file_paths = [
-    'A319/data/A319_111_Emissions_Summary_Combined.csv',
+    'A320/data/A320_233_Emissions_Summary_Combined.csv',
 ]
 
 
 if Plot_contour:
-    contour_limits = (750, 14400)  # Replace with appropriate min and max values for your data
+    contour_limits = (750, 14000)  # Replace with appropriate min and max values for your data
 
     plot_fuel_burnt_contour(file_paths, contour_limits)
 

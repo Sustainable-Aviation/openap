@@ -35,11 +35,11 @@ Target_id = "190114-72410-AFL106"
 excluded_flight_ids = ["190110-93704-ARG1844", "190114-77651-CES201",  "190111-69033-GCR7939", "190113-51219-CRL953", "190107-99735-ARG1141", "190115-24252-AEA023", "190112-45597-QFA107", "190114-72410-AFL106"]
 
 debug = False
-Limit = 199
+Limit = 99
 
 
 # Payload factor
-payload_factor = 0.70
+payload_factor = 0.9
 
 # List to hold data for all flights for plotting
 all_flights_data = []
@@ -188,7 +188,7 @@ if plot_fuel_burn:
     # Write emissions in EEA format for Google TIM
     if write_emissions:
         emissions_df = pd.DataFrame(emissions_data)
-        emissions_df.to_csv("Output/Ver_2/No_Wind/A320/A320-111/Emissions_Summary_PF_0.7.csv", index=False)
+        emissions_df.to_csv("Output/Ver_2/No_Wind/A319/A319_133/Emissions_Summary_PF_0.9.csv", index=False)
 
     # Set global parameters
     #plt.rcParams['figure.figsize'] = (10, 10)  # width, height in inches

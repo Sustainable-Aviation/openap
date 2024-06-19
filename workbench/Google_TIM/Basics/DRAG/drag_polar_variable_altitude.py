@@ -1,4 +1,4 @@
-from openap import prop, Thrust, Drag, WRAP, FlightPhase
+from openap import prop, Thrust, Drag, WRAP
 from openap.traj import Generator
 import csv
 from openap import Drag
@@ -6,30 +6,30 @@ from openap import Drag
 import numpy as np
 import matplotlib.pyplot as plt
 
-# Import Airbus A320 with CFM-56
-ac1 = prop.aircraft('A359')
+# Import Airbus A321 with CFM-56
+ac1 = prop.aircraft('A321')
 
 #print(ac1)
 
 # Get the MTOW for this airframe
 MTOW =  ac1['limits']['MTOW']  # Kgs
 
-Factor = 0.10
-Mass = int(Factor * MTOW)
+#Factor = 0.10
+#Mass = int(Factor * MTOW)
 
-
+Mass = 50000 #Kgs
 
 # Define range of aircraft cruise altitude
 alts = range(30000, 41000, 500)  # Adjust step as needed
-speeds = range(330, 430, 10)  # Adjust step as needed
+speeds = range(300, 450, 10)  # Adjust step as needed
 
 
 # AIRCRAFT DRAG CALCULATION ----->
-drag = Drag(ac = "A359")
+drag = Drag(ac = "A321")
 
 
 # Open a CSV file to write the takeoff thrust data
-with open('data/A359/cruise_drag_A359_fixed_mass01_multiple_altitude.csv', 'w', newline='') as csvfile:
+with open('data/A321/cruise_drag_A321_fixed_mass01_multiple_altitude.csv', 'w', newline='') as csvfile:
     fieldnames = ['altitude', 'TAS (kts)', 'CL', 'CD']  # Define column names
     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
     writer.writeheader()  # Write the column names

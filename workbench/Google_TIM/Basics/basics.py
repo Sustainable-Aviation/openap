@@ -4,17 +4,19 @@ from openap.traj import Generator
 # Import Airbus A320 with CFM-56
 
 ac1 = prop.aircraft('A320')
-eng1 = prop.engine('CFM56-5B4')
+#eng1 = prop.engine('CFM56-5B4')
 
 ac1_name = ac1['aircraft']
 ac1_family = ac1_name.replace("Airbus ", "")  # Including the space after "Airbus" to remove it as well
 
 print("Aircraft Family details")
 print(ac1)
-print(eng1)
+#print(eng1)
 
 # THRUST CALCULATION------->
-thrust = Thrust(ac=ac1_family, eng=eng1['name'])
+#thrust = Thrust(ac=ac1_family, eng=eng1['name'])
+
+thrust = Thrust(ac=ac1_family)
 
 # Takeoff thrust
 T_TO = thrust.takeoff(tas=100, alt=0)

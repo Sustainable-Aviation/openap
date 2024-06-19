@@ -4,8 +4,8 @@ import csv
 from scipy.interpolate import griddata
 
 # Path to the CSV file
-csv_file_path = '/Users/prateekranjan/Documents/Github/openap/workbench/Google_TIM/Basics/DRAG/data/A359/cruise_drag_A359_fixed_mass09_multiple_altitude.csv'
-#csv_file_path = '/Users/prateekranjan/Documents/Github/openap/workbench/Google_TIM/Basics/CR_THRUST/data/A320/cruise_thrust_A320-215.csv'
+csv_file_path = '/Users/prateekranjan/Documents/Github/openap/workbench/Google_TIM/Basics/DRAG/data/A359/cruise_drag_A359_fixed_mass01_multiple_altitude.csv'
+#csv_file_path = '/Users/prateekranjan/Documents/Github/openap/workbench/Google_TIM/Basics/CR_THRUST/data/A359/cruise_thrust_A359-215.csv'
 # Initialize empty lists for data
 Altitude = []
 Speed = []
@@ -41,8 +41,8 @@ ax1 = fig1.gca()
 
 
 # Determine your desired vmin and vmax values for the colormap
-vmin_value = 12
-vmax_value = 18.8
+vmin_value = 5
+vmax_value = 18
 
 
 
@@ -102,11 +102,11 @@ plt.rcParams['savefig.dpi'] = 300
 
 # Axis limits
 plt.xlim([300, 405])
-plt.ylim([331, 420])
+plt.ylim([301, 405])
 
 # Titles and labels
 #plt.title('Takeoff Thrust Contour Plot', fontsize=24, fontname="Times New Roman")
-plt.xlabel('Altitude x100 (ft)', fontsize=22, fontname="Times New Roman")
+plt.xlabel('Flight Level', fontsize=22, fontname="Times New Roman")
 plt.ylabel('TAS (kts)', fontsize=22, fontname="Times New Roman")
-plt.savefig('data/A359/A359_CRZ_MF09_LoD.png', dpi=300)  # Save the figure
+plt.savefig('data/A359/A359_CRZ_M50T_LoD.png', dpi=300)  # Save the figure
 plt.show()

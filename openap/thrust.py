@@ -56,9 +56,11 @@ class Thrust(object):
         if engine["cruise_mach"] > 0:
             self.cruise_mach = engine["cruise_mach"]
             self.eng_cruise_thrust = engine["cruise_thrust"]
+            
         else:
             self.cruise_mach = aircraft["cruise"]["mach"]
             self.eng_cruise_thrust = 0.2 * self.eng_max_thrust + 890
+            
 
     def _dfunc(self, mratio):
         d = -0.4204 * mratio + 1.0824
@@ -132,6 +134,7 @@ class Thrust(object):
             float or ndarray: Total thrust (unit: N).
 
         """
+        
         return self.climb(tas, alt, roc=0)
 
     @ndarrayconvert
@@ -172,6 +175,7 @@ class Thrust(object):
         a = (vcas / vcas_ref) ** (-0.1)
         n = self._nfunc(roc)
         ratio_seg2 = a * (P / Pcr) ** (-0.355 * (vcas / vcas_ref) + n)
+
 
         # segment 1: alt <= 10000:
         F10 = Fcr * a * (P10 / Pcr) ** (-0.355 * (vcas / vcas_ref) + n)
