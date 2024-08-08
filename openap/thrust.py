@@ -89,6 +89,7 @@ class Thrust(object):
         """
         mach = self.aero.tas2mach(tas * self.aero.kts, 0)
 
+
         eng_bpr = self.eng_bpr
         G0 = 0.0606 * self.eng_bpr + 0.6337
 
@@ -100,10 +101,15 @@ class Thrust(object):
                 + (0.23 + 0.19 * self.np.sqrt(eng_bpr)) * mach ** 2
             )
 
+           
+
         else:
+            
             # at certain altitude
             P = self.aero.pressure(alt * self.aero.ft)
             dP = P / self.aero.p0
+
+            
 
             A = -0.4327 * dP ** 2 + 1.3855 * dP + 0.0472
             Z = 0.9106 * dP ** 3 - 1.7736 * dP ** 2 + 1.8697 * dP
