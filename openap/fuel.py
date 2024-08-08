@@ -46,7 +46,7 @@ class FuelFlow(object):
             self.engine["fuel_c2"],
             self.engine["fuel_c1"],
         )
-        # print(c3,c2,c1)
+        
 
         self.func_fuel = prop.func_fuel(c3, c2, c1)
 
@@ -68,11 +68,16 @@ class FuelFlow(object):
         # use maximum dynamic thrust at see-level as denominator
         v_lof_max = self.wrap.takeoff_speed()["maximum"]
         maxthr = self.thrust.takeoff(tas=v_lof_max / 0.5144, alt=0)
+       
         ratio = acthr / maxthr
+       
+
 
         ff_sl = self.func_fuel(ratio)
         ff_corr_alt = self.engine["fuel_ch"] * (engthr / 1000) * (alt * 0.3048)
         ff_eng = ff_sl + ff_corr_alt
+
+
 
         fuelflow = ff_eng * n_eng
 
